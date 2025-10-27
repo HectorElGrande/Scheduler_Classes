@@ -1,34 +1,15 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'; // Añadido useEffect
-import { 
-  Plus, Trash2, Calendar, Clock, BookOpen, User, 
-  ChevronLeft, ChevronRight, X, Edit2, 
-  Tag, FileText, ChevronDown, DollarSign 
+import {
+  Plus, Trash2, Calendar, Clock, BookOpen, User,
+  ChevronLeft, ChevronRight, X, Edit2,
+  Tag, FileText, ChevronDown, DollarSign
 } from 'lucide-react';
-// --- NUEVO: Imports de Firebase ---
-import { initializeApp } from "firebase/app";
-import { 
-  getFirestore, collection, onSnapshot, query, 
-  doc, addDoc, setDoc, deleteDoc, setLogLevel
+import { db, auth } from './utils/firebase'; 
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+import {
+  collection, onSnapshot, query,
+  doc, addDoc, setDoc, deleteDoc
 } from "firebase/firestore";
-import { 
-  getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged 
-} from "firebase/auth";
-
-// --- NUEVO: Configuración de Firebase ---
-// Estas variables (__app_id, __firebase_config, __initial_auth_token) 
-// son proporcionadas automáticamente por el entorno.
-const appId = typeof __app_id !== 'undefined' ? __app_id : (typeof window !== 'undefined' && window.__app_id) ? window.__app_id : 'default-app-id';
-const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : (typeof window !== 'undefined' ? (window.__firebase_config || '{}') : '{}'));
-let db, auth;
-
-try {
-  const app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  auth = getAuth(app);
-  setLogLevel('debug'); // Habilita logs de Firestore en la consola
-} catch (e) {
-  console.error("Error inicializando Firebase:", e);
-}
 
 // --- Constantes y Datos Iniciales ---
 const DIAS_SEMANA_COMPLETO = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -71,7 +52,7 @@ const getInicioSemana = (date) => {
   const d = new Date(date);
   const diaSemana = d.getDay(); // Domingo = 0, Lunes = 1, ... Sábado = 6
   // Ajustar para que Lunes (1) sea el primer día. Si es Domingo (0), retrocede 6 días.
-  const diff = d.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1); 
+  const diff = d.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
   return new Date(d.setDate(diff));
 };
 
@@ -83,10 +64,10 @@ const getMatrizMes = (date) => {
   const mes = date.getMonth();
   const primerDiaMes = new Date(anio, mes, 1);
   const primerDiaSemana = getInicioSemana(primerDiaMes); // Lunes de la primera semana
-  
+
   const dias = [];
   let diaActual = new Date(primerDiaSemana);
-  
+
   for (let i = 0; i < 42; i++) { // 6 semanas * 7 dias = 42 celdas
     dias.push(new Date(diaActual));
     diaActual.setDate(diaActual.getDate() + 1);
@@ -107,10 +88,10 @@ const detectarSolapamiento = (nuevaClase, clasesExistentes, idActual) => {
     // Solo comprobar en la misma fecha
     if (clase.fecha === nuevaClase.fecha) {
       // Lógica de solapamiento: (InicioA < FinB) y (FinA > InicioB)
-      const haySolapamiento = 
-        nuevaClase.inicio < clase.fin && 
+      const haySolapamiento =
+        nuevaClase.inicio < clase.fin &&
         nuevaClase.fin > clase.inicio;
-        
+
       if (haySolapamiento) {
         return clase; // Devuelve la clase que genera el conflicto
       }
@@ -127,7 +108,7 @@ const detectarSolapamiento = (nuevaClase, clasesExistentes, idActual) => {
  */
 function MiniCalendario({ fechaActual, setFechaActual, clases }) {
   const [mesMostrado, setMesMostrado] = useState(new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1));
-  
+
   // --- Estados para el Popover ---
   const [hoveredDay, setHoveredDay] = useState(null); // Almacena { ymd, target }
   const [hoveredClases, setHoveredClases] = useState([]);
@@ -146,7 +127,7 @@ function MiniCalendario({ fechaActual, setFechaActual, clases }) {
       const list = map.get(clase.fecha) || [];
       list.push(clase);
       // Ordenamos las clases por hora de inicio
-      map.set(clase.fecha, list.sort((a,b) => a.inicio.localeCompare(b.inicio)));
+      map.set(clase.fecha, list.sort((a, b) => a.inicio.localeCompare(b.inicio)));
     }
     return map;
   }, [clases]);
@@ -155,7 +136,7 @@ function MiniCalendario({ fechaActual, setFechaActual, clases }) {
     setMesMostrado(new Date(mesMostrado.getFullYear(), mesMostrado.getMonth() - 1, 1));
     setHoveredDay(null); // Ocultar popover al cambiar
   };
-  
+
   const irMesSiguiente = () => {
     setMesMostrado(new Date(mesMostrado.getFullYear(), mesMostrado.getMonth() + 1, 1));
     setHoveredDay(null); // Ocultar popover al cambiar
@@ -177,17 +158,17 @@ function MiniCalendario({ fechaActual, setFechaActual, clases }) {
     setHoveredDay(null);
     setHoveredClases([]);
   };
-  
+
   // Calcula la posición del popover
   const popoverStyle = useMemo(() => {
     if (!hoveredDay || !hoveredDay.target || !calendarRef.current) {
       return { display: 'none' };
     }
-    
+
     // Obtenemos las coordenadas del botón (target) y del contenedor (calendarRef)
     const targetRect = hoveredDay.target.getBoundingClientRect();
     const containerRect = calendarRef.current.getBoundingClientRect();
-    
+
     // Calculamos la posición del popover *relativa* al contenedor
     // Posición Vertical: Centrado con el botón
     const top = targetRect.top - containerRect.top + (targetRect.height / 2);
@@ -208,25 +189,25 @@ function MiniCalendario({ fechaActual, setFechaActual, clases }) {
 
   return (
     // MODIFICADO: Añadido ref, position: relative y onMouseLeave
-    <div 
-      ref={calendarRef} 
-      className="relative bg-slate-50 p-4 rounded-lg border border-slate-200" 
+    <div
+      ref={calendarRef}
+      className="relative bg-slate-50 p-4 rounded-lg border border-slate-200"
       onMouseLeave={handleMouseLeaveCalendar}
     >
       <div className="flex justify-between items-center mb-3">
-         <h4 className="text-sm font-semibold text-slate-700 capitalize">
-           {formatFecha(mesMostrado, { month: 'long', year: 'numeric' })}
-         </h4>
-         <div className="flex gap-1">
-           <button onClick={irMesAnterior} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700">
-             <ChevronLeft size={18} />
-           </button>
-           <button onClick={irMesSiguiente} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700">
-             <ChevronRight size={18} />
-           </button>
-         </div>
+        <h4 className="text-sm font-semibold text-slate-700 capitalize">
+          {formatFecha(mesMostrado, { month: 'long', year: 'numeric' })}
+        </h4>
+        <div className="flex gap-1">
+          <button onClick={irMesAnterior} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700">
+            <ChevronLeft size={18} />
+          </button>
+          <button onClick={irMesSiguiente} className="p-1 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-700">
+            <ChevronRight size={18} />
+          </button>
+        </div>
       </div>
-      
+
       <div className="grid grid-cols-7 text-center mb-2">
         {/* FIX: Usamos el nombre completo del día (único) como key, no la inicial (duplicada "M") */}
         {DIAS_SEMANA_COMPLETO.map(dia => (
@@ -242,10 +223,10 @@ function MiniCalendario({ fechaActual, setFechaActual, clases }) {
           const esMesActual = dia.getMonth() === mesMostrado.getMonth();
           const clasesDia = clasesPorDia.get(ymd); // Es un array
           const numClases = clasesDia ? clasesDia.length : 0;
-          
+
           return (
-            <button 
-              key={ymd} 
+            <button
+              key={ymd}
               onClick={() => setFechaActual(dia)}
               onMouseEnter={(e) => handleDayHover(e, ymd, clasesDia)} // Añadido onMouseEnter
               className={`
@@ -266,10 +247,10 @@ function MiniCalendario({ fechaActual, setFechaActual, clases }) {
           );
         })}
       </div>
-      
+
       {/* --- Popover que muestra las clases al hacer hover --- */}
       {hoveredDay && hoveredClases.length > 0 && (
-        <div 
+        <div
           style={popoverStyle}
           className="bg-white p-3 rounded-lg shadow-xl border border-slate-200 w-48"
         >
@@ -299,34 +280,34 @@ function Sidebar({ fechaActual, setFechaActual, clases }) { // onAddClase elimin
   const hoyYMD = toYYYYMMDD(new Date());
   const clasesHoy = useMemo(() => {
     return (clases.filter(c => c.fecha === hoyYMD) || [])
-      .sort((a,b) => a.inicio.localeCompare(b.inicio));
+      .sort((a, b) => a.inicio.localeCompare(b.inicio));
   }, [clases, hoyYMD]);
 
   return (
     <aside className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col space-y-6 h-screen overflow-y-auto">
-      
+
       <MiniCalendario fechaActual={fechaActual} setFechaActual={setFechaActual} clases={clases} />
-      
+
       <div className="flex-1 space-y-4">
         <h3 className="text-sm font-semibold text-slate-700">Agenda de Hoy</h3>
         {clasesHoy.length > 0 ? (
-           <div className="space-y-3">
-             {clasesHoy.map(clase => (
-               <div key={clase.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="flex justify-between items-center mb-1">
-                    {/* CAMBIO: Añadido - {clase.fin} */}
-                    <span className="text-sm font-semibold text-indigo-700">{clase.inicio} - {clase.fin}</span>
-                    {clase.estadoPago === 'Pagado' ? (
-                      <span className="text-xs text-green-600 font-medium">Pagado</span>
-                    ) : (
-                      <span className="text-xs text-yellow-600 font-medium">Pendiente</span>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium text-slate-700">{clase.materia}</p>
-                  <p className="text-sm text-slate-500">{clase.alumno}</p>
-               </div>
-             ))}
-           </div>
+          <div className="space-y-3">
+            {clasesHoy.map(clase => (
+              <div key={clase.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex justify-between items-center mb-1">
+                  {/* CAMBIO: Añadido - {clase.fin} */}
+                  <span className="text-sm font-semibold text-indigo-700">{clase.inicio} - {clase.fin}</span>
+                  {clase.estadoPago === 'Pagado' ? (
+                    <span className="text-xs text-green-600 font-medium">Pagado</span>
+                  ) : (
+                    <span className="text-xs text-yellow-600 font-medium">Pendiente</span>
+                  )}
+                </div>
+                <p className="text-sm font-medium text-slate-700">{clase.materia}</p>
+                <p className="text-sm text-slate-500">{clase.alumno}</p>
+              </div>
+            ))}
+          </div>
         ) : (
           <p className="text-sm text-slate-500 italic">No hay clases programadas para hoy.</p>
         )}
@@ -360,7 +341,7 @@ function ClaseEvento({ clase, onSelectClase, style }) {
 
   const bgColor = getBGColor(clase.materia);
   const borderColor = getBorderColor(clase.materia);
-  
+
   // FIX: Cambiado .map(Number) a parseInt para asegurar consistencia
   const [inicioH_str, inicioM_str] = clase.inicio.split(':');
   const inicioH = parseInt(inicioH_str, 10);
@@ -369,11 +350,11 @@ function ClaseEvento({ clase, onSelectClase, style }) {
   const [finH_str, finM_str] = clase.fin.split(':');
   const finH = parseInt(finH_str, 10);
   const finM = parseInt(finM_str, 10) || 0; // <-- AÑADIDO fallback
-  
+
   const duracion = (finH * 60 + finM) - (inicioH * 60 + inicioM);
-  
+
   const [pagoBg, pagoText] = useMemo(() => {
-    switch(clase.estadoPago) {
+    switch (clase.estadoPago) {
       case 'Pagado': return ['bg-green-100', 'text-green-700'];
       default: return ['bg-yellow-100', 'text-yellow-700']; // Pendiente
     }
@@ -389,12 +370,12 @@ function ClaseEvento({ clase, onSelectClase, style }) {
       <h4 className="text-sm font-bold" style={{ color: borderColor }}>
         {clase.materia}
       </h4>
-      
+
       <div className="flex items-center gap-1.5 text-xs text-slate-700 mt-1">
         <User size={12} />
         <span>{clase.alumno}</span>
       </div>
-      
+
       {/* Mostrar notas solo si hay espacio (si la duración es > 30 min) */}
       {clase.notas && duracion > 30 && (
         <div className="flex items-start gap-1.5 text-xs text-slate-600 mt-2 pt-2 border-t border-slate-300/50">
@@ -402,7 +383,7 @@ function ClaseEvento({ clase, onSelectClase, style }) {
           <p className="line-clamp-2">{clase.notas}</p>
         </div>
       )}
-      
+
       <span className={`absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded-full ${pagoBg} ${pagoText}`}>
         {clase.estadoPago}
       </span>
@@ -416,7 +397,7 @@ function ClaseEvento({ clase, onSelectClase, style }) {
  */
 function VistaSemana({ fechaActual, clases, onSelectClase }) {
   const inicioSemana = useMemo(() => getInicioSemana(fechaActual), [fechaActual]);
-  
+
   const dias = useMemo(() => {
     return Array(7).fill(0).map((_, i) => addDays(inicioSemana, i));
   }, [inicioSemana]);
@@ -429,15 +410,15 @@ function VistaSemana({ fechaActual, clases, onSelectClase }) {
     const [finH_str, finM_str] = clase.fin.split(':');
     const finH = parseInt(finH_str, 10);
     const finM = parseInt(finM_str, 10) || 0; // <-- AÑADIDO fallback
-    
+
     const inicioEnMinutos = (inicioH - 8) * 60 + inicioM;
     const finEnMinutos = (finH - 8) * 60 + finM;
     const duracionTotalEnMinutos = (21 - 8) * 60; // 13 horas * 60 = 780
     const duracionEventoEnMinutos = finEnMinutos - inicioEnMinutos;
-    
+
     const top = (inicioEnMinutos / duracionTotalEnMinutos) * 100;
     const height = (duracionEventoEnMinutos / duracionTotalEnMinutos) * 100;
-    
+
     const clampedTop = Math.max(0, Math.min(top, 100));
     const clampedHeight = Math.max(0, Math.min(height, 100 - clampedTop));
 
@@ -471,11 +452,11 @@ function VistaSemana({ fechaActual, clases, onSelectClase }) {
             {/* --- Eventos --- */}
             <div className="absolute inset-0">
               {clasesDelDia.map(clase => (
-                <ClaseEvento 
-                  key={clase.id} 
-                  clase={clase} 
+                <ClaseEvento
+                  key={clase.id}
+                  clase={clase}
                   onSelectClase={onSelectClase}
-                  style={calcularPosicionEvento(clase)} 
+                  style={calcularPosicionEvento(clase)}
                 />
               ))}
             </div>
@@ -495,7 +476,7 @@ function VistaDia({ fechaActual, clases, onSelectClase }) {
   // FIX: Añadido .sort() para asegurar el orden de renderizado, lo que debería
   //      solucionar el apilamiento incorrecto que se ve en la imagen.
   const clasesDelDia = clases.filter(c => c.fecha === fechaYMD)
-                             .sort((a,b) => a.inicio.localeCompare(b.inicio));
+    .sort((a, b) => a.inicio.localeCompare(b.inicio));
 
   // --- REESCRITO (Quitando console.log) ---
   const calcularPosicionEvento = (clase) => {
@@ -507,23 +488,23 @@ function VistaDia({ fechaActual, clases, onSelectClase }) {
     const [finH_str, finM_str] = clase.fin.split(':');
     const finH = parseInt(finH_str, 10);
     const finM = parseInt(finM_str, 10) || 0;
-    
+
     // 2. Definir constantes de la cuadrícula
     const HORA_INICIO_GRID = 8; // 8:00
     const HORA_FIN_GRID = 21; // 21:00
     const DURACION_TOTAL_MINUTOS = (HORA_FIN_GRID - HORA_INICIO_GRID) * 60; // 13 * 60 = 780
-    
+
     // 3. Calcular minutos desde el inicio de la cuadrícula (8:00)
     const inicioEnMinutos = (inicioH - HORA_INICIO_GRID) * 60 + inicioM;
     const finEnMinutos = (finH - HORA_INICIO_GRID) * 60 + finM;
-    
+
     // 4. Calcular duración del evento
     const duracionEventoEnMinutos = finEnMinutos - inicioEnMinutos;
-    
+
     // 5. Calcular porcentajes
     let top = (inicioEnMinutos / DURACION_TOTAL_MINUTOS) * 100;
     let height = (duracionEventoEnMinutos / DURACION_TOTAL_MINUTOS) * 100;
-    
+
     // 6. Clamp (asegurar que no se salga)
     top = Math.max(0, Math.min(top, 100));
     height = Math.max(0, Math.min(height, 100 - top));
@@ -549,20 +530,20 @@ function VistaDia({ fechaActual, clases, onSelectClase }) {
 
       {/* --- Columna del Día --- */}
       <div className="relative border-l border-r border-slate-200">
-        
+
         {/* --- Líneas de Hora --- */}
         {HORAS_DIA.map(hora => (
           <div key={hora} className="h-24 border-t border-slate-200"></div>
         ))}
-        
+
         {/* --- Eventos --- */}
         <div className="absolute inset-0">
           {clasesDelDia.map(clase => (
-            <ClaseEvento 
-              key={clase.id} 
-              clase={clase} 
+            <ClaseEvento
+              key={clase.id}
+              clase={clase}
               onSelectClase={onSelectClase}
-              style={calcularPosicionEvento(clase)} 
+              style={calcularPosicionEvento(clase)}
             />
           ))}
         </div>
@@ -585,34 +566,32 @@ function VistaMes({ fechaActual, clases, onSelectClase, onAddClase }) {
         const fechaYMD = toYYYYMMDD(dia);
         const esMesActual = dia.getMonth() === fechaActual.getMonth();
         const esHoy = fechaYMD === hoyYMD;
-        
+
         const clasesDelDia = (clases.filter(c => c.fecha === fechaYMD) || [])
-          .sort((a,b) => a.inicio.localeCompare(b.inicio));
-        
+          .sort((a, b) => a.inicio.localeCompare(b.inicio));
+
         return (
           <div
             key={fechaYMD}
-            className={`p-2 border-t border-l border-slate-200 ${
-              esMesActual ? 'bg-white' : 'bg-slate-50'
-            } overflow-hidden flex flex-col cursor-pointer hover:bg-slate-100 transition-colors`}
+            className={`p-2 border-t border-l border-slate-200 ${esMesActual ? 'bg-white' : 'bg-slate-50'
+              } overflow-hidden flex flex-col cursor-pointer hover:bg-slate-100 transition-colors`}
             onClick={() => onAddClase(dia)}
           >
-            <span className={`mb-1 text-xs font-medium ${
-              esHoy ? 'bg-indigo-600 text-white rounded-full w-5 h-5 flex items-center justify-center' :
+            <span className={`mb-1 text-xs font-medium ${esHoy ? 'bg-indigo-600 text-white rounded-full w-5 h-5 flex items-center justify-center' :
               esMesActual ? 'text-slate-700' : 'text-slate-400'
-            }`}>
+              }`}>
               {dia.getDate()}
             </span>
             <div className="flex-1 space-y-1 overflow-y-auto">
               {clasesDelDia.slice(0, 3).map(clase => (
-                <div 
+                <div
                   key={clase.id}
                   className={`text-xs rounded ${clase.estadoPago === 'Pagado' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'} overflow-hidden`}
                   onClick={(e) => { e.stopPropagation(); onSelectClase(clase); }}
                 >
                   {/* Móvil: Solo punto */}
                   <span className={`sm:hidden w-2 h-2 rounded-full m-1.5 inline-block ${clase.estadoPago === 'Pagado' ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
-                  
+
                   {/* Desktop: Texto */}
                   <span className={`hidden sm:inline-block p-1 w-full truncate`}>
                     {clase.materia}
@@ -695,7 +674,7 @@ function ClaseModal({ clase, clases, onClose, onSave, onDelete }) {
     }
   );
   const [error, setError] = useState('');
-  
+
   const commonInputClass = "w-full p-2 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm";
   const commonLabelClass = "block text-sm font-medium text-slate-700 mb-1";
 
@@ -711,27 +690,31 @@ function ClaseModal({ clase, clases, onClose, onSave, onDelete }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
+    console.log("ClaseModal: handleSubmit llamado");
 
     if (!formData.materia || !formData.alumno || !formData.fecha || !formData.inicio || !formData.fin) {
       setError('Los campos Materia, Alumno, Fecha y Horas son obligatorios.');
+      console.log("ClaseModal: Falló validación de campos obligatorios");
       return;
     }
     if (formData.fin <= formData.inicio) {
       setError('La hora de fin debe ser posterior a la de inicio.');
-      return;
-    }
-    
-    const esEdicion = !!(clase && clase.id);
-    const claseSolapada = detectarSolapamiento(formData, clases, esEdicion ? clase.id : null);
-    
-    if (claseSolapada) {
-      setError(`¡Conflicto! Se solapa con: ${claseSolapada.materia} (${claseSolapada.alumno}) de ${claseSolapada.inicio} a ${claseSolapada.fin}.`);
+      console.log("ClaseModal: Falló validación de hora fin <= inicio");
       return;
     }
 
+    const esEdicion = !!(clase && clase.id);
+    const claseSolapada = detectarSolapamiento(formData, clases, esEdicion ? clase.id : null);
+
+    if (claseSolapada) {
+      setError(`¡Conflicto! Se solapa con: ${claseSolapada.materia} (${claseSolapada.alumno}) de ${claseSolapada.inicio} a ${claseSolapada.fin}.`);
+      console.log("ClaseModal: Detectado solapamiento", claseSolapada);
+      return;
+    }
+    console.log("ClaseModal: Validación pasada, llamando a onSave...");
     onSave(formData);
   };
-  
+
   const esEdicion = !!(clase && clase.id);
 
   return (
@@ -746,7 +729,7 @@ function ClaseModal({ clase, clases, onClose, onSave, onDelete }) {
             <X size={22} />
           </button>
         </div>
-        
+
         {/* Cuerpo del Modal (con scroll) */}
         <div className="p-6 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -759,7 +742,7 @@ function ClaseModal({ clase, clases, onClose, onSave, onDelete }) {
               <input type="text" id="alumno" name="alumno" value={formData.alumno} onChange={handleChange} className={commonInputClass} />
             </div>
           </div>
-          
+
           <div>
             <label htmlFor="nivel" className={commonLabelClass}>Nivel / Curso</label>
             <input type="text" id="nivel" name="nivel" value={formData.nivel} onChange={handleChange} className={commonInputClass} />
@@ -796,7 +779,7 @@ function ClaseModal({ clase, clases, onClose, onSave, onDelete }) {
             <label htmlFor="notas" className={commonLabelClass}>Notas</label>
             <textarea id="notas" name="notas" value={formData.notas} onChange={handleChange} rows="3" className={commonInputClass}></textarea>
           </div>
-          
+
           {error && (
             <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
               {error}
@@ -863,14 +846,14 @@ function DetalleClaseModal({ clase, onClose, onEdit, onDelete, onSave }) {
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4">
       {/* Clic en el fondo para cerrar */}
       <div className="absolute inset-0" onClick={onClose}></div>
-      
+
       <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
         <button onClick={onClose} className="absolute top-3 right-3 p-1 text-slate-500 hover:text-slate-800 rounded-full hover:bg-slate-100">
           <X size={20} />
         </button>
-        
+
         <h3 className="text-xl font-semibold text-indigo-700 mb-4">{clase.materia}</h3>
-        
+
         <div className="space-y-3 text-sm">
           <div className="flex items-center gap-3">
             <User size={18} className="text-slate-500" />
@@ -923,7 +906,7 @@ function DetalleClaseModal({ clase, onClose, onEdit, onDelete, onSave }) {
               </button>
             )}
           </div>
-          
+
           {/* --- Acciones Principales --- */}
           <div className="flex gap-3">
             <button
@@ -957,7 +940,7 @@ function CabeceraApp({ vista, setVista, fechaActual, setFechaActual }) {
   const handleVistaChange = (e) => {
     setVista(e.target.value);
   };
-  
+
   const irHoy = () => {
     setFechaActual(hoy);
   };
@@ -971,7 +954,7 @@ function CabeceraApp({ vista, setVista, fechaActual, setFechaActual }) {
       setFechaActual(addDays(fechaActual, -1));
     }
   };
-  
+
   const irSiguiente = () => {
     if (vista === 'mes') {
       setFechaActual(new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 1));
@@ -1014,18 +997,18 @@ function CabeceraApp({ vista, setVista, fechaActual, setFechaActual }) {
             <ChevronRight size={20} />
           </button>
         </div>
-        <button 
+        <button
           onClick={irHoy}
           className="text-sm font-medium text-slate-700 bg-white border border-slate-300 px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50"
         >
           Hoy
         </button>
       </div>
-      
+
       {/* Selector de Vista */}
       <div className="relative">
-        <select 
-          value={vista} 
+        <select
+          value={vista}
           onChange={handleVistaChange}
           className="text-sm font-medium text-slate-700 bg-white border border-slate-300 pl-3 pr-8 py-1.5 rounded-lg shadow-sm hover:bg-slate-50 appearance-none"
         >
@@ -1050,7 +1033,7 @@ function CabeceraSemana({ fechaActual, vista }) {
   // FIX: Cambiado de (vista === 'dia') a (vista !== 'semana')
   //      Ahora esta cabecera SOLO se mostrará en la vista de semana.
   if (vista !== 'semana') {
-    return null; 
+    return null;
   }
 
   return (
@@ -1093,20 +1076,21 @@ function CabeceraMes({ vista }) {
 export default function App() {
   // --- ESTADO MODIFICADO ---
   // Ahora el estado inicial es un array vacío. Se llenará desde Firestore.
-  const [clases, setClases] = useState([]); 
+  const [clases, setClases] = useState([]);
   const [userId, setUserId] = useState(null); // Para guardar el ID de usuario
   const [isAuthReady, setIsAuthReady] = useState(false); // Para saber cuándo empezar a leer datos
+  const [isLoading, setIsLoading] = useState(true);
 
   const [fechaActual, setFechaActual] = useState(new Date());
   const [vista, setVista] = useState('mes'); // 'mes', 'semana', 'dia'
-  
+
   const [modalAbierto, setModalAbierto] = useState(false);
   const [claseParaEditar, setClaseParaEditar] = useState(null); // null o { datos de la clase }
   const [claseSeleccionada, setClaseSeleccionada] = useState(null); // null o { datos de la clase }
-  
+
   // --- NUEVO: Efecto para Autenticación ---
   useEffect(() => {
-    if (!auth) return;
+    if (!auth)  return;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -1115,14 +1099,7 @@ export default function App() {
       } else {
         // Si no hay usuario, intentamos autenticarnos (primero con token, sino anónimo)
         try {
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-          } else if (typeof window !== 'undefined' && window.__initial_auth_token) {
-            await signInWithCustomToken(auth, window.__initial_auth_token);
-          } else {
-            await signInAnonymously(auth);
-          }
-          // onAuthStateChanged se disparará de nuevo con el nuevo usuario
+          await signInAnonymously(auth);
         } catch (error) {
           console.error("Error de autenticación:", error);
           setIsAuthReady(true); // Permitir que la app continúe (aunque sea sin datos)
@@ -1143,7 +1120,7 @@ export default function App() {
     }
 
     // Ruta de la colección: /artifacts/{appId}/users/{userId}/clases
-    const collPath = `artifacts/${appId}/users/${userId}/clases`;
+    const collPath = `users/${userId}/clases`;
     const q = query(collection(db, collPath));
 
     // onSnapshot escucha en tiempo real
@@ -1162,7 +1139,7 @@ export default function App() {
     return () => unsubscribe();
 
   }, [isAuthReady, userId]); // Depende de isAuthReady y userId
-  
+
 
   const handleAddClaseClick = (fecha) => {
     setClaseParaEditar({
@@ -1185,33 +1162,36 @@ export default function App() {
 
   // --- FUNCIÓN MODIFICADA: Guardar en Firestore ---
   const handleSaveClase = async (claseData) => {
+    console.log("App: handleSaveClase llamado con:", claseData);
     if (!db || !userId) {
       console.error("Error: DB no lista o usuario no autenticado.");
       return;
     }
-    
+
     // Ruta de la colección
-    const collPath = `artifacts/${appId}/users/${userId}/clases`;
+    const collPath = `users/${userId}/clases`;
 
     try {
       if (claseData.id) {
+        console.log("App: Intentando actualizar clase ID:", claseData.id);
         // --- Editar (Update) ---
         const docRef = doc(db, collPath, claseData.id);
         // Creamos una copia y eliminamos el 'id' porque no queremos guardar el id *dentro* del documento
         const dataToSave = { ...claseData };
-        delete dataToSave.id; 
+        delete dataToSave.id;
         await setDoc(docRef, dataToSave);
         console.log("Clase actualizada:", claseData.id);
       } else {
+        console.log("App: Intentando crear nueva clase"); // <-- DEBUG LOG
         // --- Crear (Add) ---
-        // El id se genera automáticamente
-        await addDoc(collection(db, collPath), claseData);
-        console.log("Nueva clase añadida");
+        const dataToSave = { ...claseData }; // Copia por si acaso
+        const docRef = await addDoc(collection(db, collPath), dataToSave);
+        console.log("Nueva clase añadida con éxito, ID:", docRef.id);
       }
-      
+
       // Ya no necesitamos 'setClases' aquí. 
       // onSnapshot detectará el cambio y actualizará el estado automáticamente.
-      
+
     } catch (error) {
       console.error("Error al guardar en Firestore:", error);
     }
@@ -1219,16 +1199,15 @@ export default function App() {
     setModalAbierto(false);
     setClaseParaEditar(null);
   };
-  
+
   // --- FUNCIÓN MODIFICADA: Borrar de Firestore ---
   const handleDeleteClase = async (id) => {
     if (!db || !userId) {
       console.error("Error: DB no lista o usuario no autenticado.");
       return;
     }
-    
-    // Ruta del documento
-    const docPath = `artifacts/${appId}/users/${userId}/clases/${id}`;
+
+    const docPath = `users/${userId}/clases/${id}`;
 
     try {
       await deleteDoc(doc(db, docPath));
@@ -1240,7 +1219,7 @@ export default function App() {
   };
 
   const renderVista = () => {
-    switch(vista) {
+    switch (vista) {
       case 'semana':
         return <VistaSemana fechaActual={fechaActual} clases={clases} onSelectClase={setClaseSeleccionada} />;
       case 'dia':
@@ -1253,35 +1232,35 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-800">
-      
+
       {/* --- BARRA LATERAL --- */}
-      <Sidebar 
+      <Sidebar
         fechaActual={fechaActual}
         setFechaActual={setFechaActual}
         clases={clases}
       />
-      
+
       {/* --- CONTENIDO PRINCIPAL --- */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* --- Cabecera de Navegación y Vistas --- */}
-        <CabeceraApp 
-          vista={vista} 
-          setVista={setVista} 
-          fechaActual={fechaActual} 
-          setFechaActual={setFechaActual} 
+        <CabeceraApp
+          vista={vista}
+          setVista={setVista}
+          fechaActual={fechaActual}
+          setFechaActual={setFechaActual}
         />
-        
+
         {/* --- Contenedor del Calendario (con scroll) --- */}
         <div className="flex-1 flex flex-col overflow-auto">
           {/* --- Encabezado de la Vista (Días de la semana, etc.) --- */}
           <CabeceraSemana fechaActual={fechaActual} vista={vista} />
           <CabeceraMes vista={vista} />
-          
+
           {/* --- Cuerpo del Calendario --- */}
           {renderVista()}
         </div>
       </main>
-      
+
       {/* --- Modales --- */}
       {modalAbierto && (
         <ClaseModal
