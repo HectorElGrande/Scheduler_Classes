@@ -1,8 +1,13 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, setLogLevel } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+// --- MODIFICADO: Añadir imports ---
+import { 
+  getAuth, 
+  GoogleAuthProvider, // <--- Añadir
+  signInWithPopup,    // <--- Añadir
+  signOut             // <--- Añadir
+} from "firebase/auth";
 
-// --- PASO 1 ---
 // Pega aquí el objeto 'firebaseConfig' que copiaste de tu consola de Firebase.
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
@@ -15,19 +20,27 @@ const firebaseConfig = {
   measurementId: "G-2NFQTJEPVB"
 };
 
-// --- PASO 2 ---
 // Inicializa Firebase con tu configuración personal.
 let db, auth;
+let app; // Guardamos la app para exportarla si es necesario en el futuro
 try {
-  const app = initializeApp(firebaseConfig);
+  app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   auth = getAuth(app);
-  setLogLevel('debug'); // Opcional: para ver logs en la consola
+  setLogLevel('debug'); 
 } catch (e) {
   console.error("Error inicializando Firebase:", e);
 }
 
-// --- PASO 3 ---
-// Exporta las instancias de tu proyecto.
-// (Nota: Ya no exportamos 'appId', no es necesario).
-export { db, auth };
+// --- NUEVO: Crear instancia del proveedor de Google ---
+const googleProvider = new GoogleAuthProvider();
+
+// Exporta las instancias y funciones necesarias.
+export { 
+  db, 
+  auth, 
+  googleProvider,   // <--- Exportar
+  signInWithPopup, // <--- Exportar
+  signOut          // <--- Exportar
+};
+
