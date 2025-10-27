@@ -1,0 +1,22 @@
+[
+  {
+    "origin": [
+      "http://localhost:3000",
+      "http://localhost:5173", 
+      "https://scheduler-classes-1dere7xc9-hectorelgrandes-projects.vercel.app"
+    ],
+    "method": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "OPTIONS"
+    ],
+    "header": [
+      "Content-Type",
+      "Authorization",
+      "X-Goog-User-Project"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -1,14 +1,17 @@
+// Importa las funciones que necesitas de los SDKs de Firebase
 import { initializeApp } from "firebase/app";
-import { getFirestore, setLogLevel } from "firebase/firestore";
-// --- MODIFICADO: Añadir imports ---
+import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage"; // <-- AÑADIR
 import { 
-  getAuth, 
-  GoogleAuthProvider, // <--- Añadir
-  signInWithPopup,    // <--- Añadir
-  signOut             // <--- Añadir
+    getAuth, 
+    GoogleAuthProvider, 
+    signInWithPopup, 
+    signOut,
+    createUserWithEmailAndPassword, // <-- AÑADIR
+    signInWithEmailAndPassword,     // <-- AÑADIR
+    updateProfile                   // <-- AÑADIR
 } from "firebase/auth";
 
-// Pega aquí el objeto 'firebaseConfig' que copiaste de tu consola de Firebase.
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDHr2j-JEgGi0lHTcsDV1hysN3kAdezVrU",
@@ -20,27 +23,20 @@ const firebaseConfig = {
   measurementId: "G-2NFQTJEPVB"
 };
 
-// Inicializa Firebase con tu configuración personal.
-let db, auth;
-let app; // Guardamos la app para exportarla si es necesario en el futuro
-try {
-  app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  auth = getAuth(app);
-  setLogLevel('debug'); 
-} catch (e) {
-  console.error("Error inicializando Firebase:", e);
-}
+// Inicializa Firebase
+const app = initializeApp(firebaseConfig);
 
-// --- NUEVO: Crear instancia del proveedor de Google ---
-const googleProvider = new GoogleAuthProvider();
+// Exporta los servicios que usarás en tu aplicación
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app); // <-- AÑADIR
+export const googleProvider = new GoogleAuthProvider();
 
-// Exporta las instancias y funciones necesarias.
+// Exporta las funciones de autenticación que importaste en App.jsx
 export { 
-  db, 
-  auth, 
-  googleProvider,   // <--- Exportar
-  signInWithPopup, // <--- Exportar
-  signOut          // <--- Exportar
+    signInWithPopup, 
+    signOut,
+    createUserWithEmailAndPassword, // <-- AÑADIR
+    signInWithEmailAndPassword,     // <-- AÑADIR
+    updateProfile                   // <-- AÑADIR
 };
-
