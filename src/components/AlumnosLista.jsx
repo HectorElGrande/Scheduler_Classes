@@ -1,125 +1,126 @@
 import React, { useState } from 'react';
-import { UserPlus, ChevronDown, ChevronUp, User, Edit2, Trash2 } from 'lucide-react'; // <-- Añadir Edit2, Trash2
+import { User, Plus, ChevronDown, ChevronUp, Edit2, Trash2, Eye } from 'lucide-react'; // <-- Añadir Eye
 import AlumnoModal from './AlumnoModal';
 
-export default function AlumnosLista({ alumnos, onAddAlumno, onUpdateAlumno, onDeleteAlumno }) {
+// <-- Añadir onOpenDetail
+export default function AlumnosLista({ alumnos, onAddAlumno, onUpdateAlumno, onDeleteAlumno, onOpenDetail }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
-  const [listaVisible, setListaVisible] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [alumnoToEdit, setAlumnoToEdit] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleOpenModal = (alumno = null) => {
-    setAlumnoSeleccionado(alumno);
+    setAlumnoToEdit(alumno);
     setModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setAlumnoSeleccionado(null);
-  };
-
   const handleSave = async (alumnoData) => {
-    setIsSaving(true);
-    const isEditing = !!alumnoSeleccionado;
-    const saveFunction = isEditing ? onUpdateAlumno : onAddAlumno;
+    setIsLoading(true);
     try {
-      await saveFunction(alumnoData);
-      handleCloseModal();
-      alert(isEditing ? 'Alumno actualizado con éxito' : 'Alumno creado con éxito');
+      if (alumnoToEdit) {
+        await onUpdateAlumno({ ...alumnoData, id: alumnoToEdit.id });
+        alert('Alumno actualizado correctamente.');
+      } else {
+        await onAddAlumno(alumnoData);
+        alert('Alumno creado correctamente.');
+      }
+      setModalOpen(false);
+      setAlumnoToEdit(null);
     } catch (error) {
-      console.error("Error al guardar alumno desde AlumnosLista:", error);
-      // No cerramos el modal si hay error
+      // El error ya se muestra en App.jsx, no necesitamos alert aquí
+      console.error("Error guardando alumno desde AlumnosLista");
     } finally {
-      setIsSaving(false);
+      setIsLoading(false);
     }
   };
 
-  // --- AÑADIDO: Handler para eliminar directamente ---
-  const handleDeleteClick = (alumno) => {
-    if (!alumno || !alumno.id) return;
-    if (confirm(`¿Seguro que quieres eliminar a ${alumno.nombre}? Esta acción no se puede deshacer y podría afectar a clases pasadas.`)) {
-      onDeleteAlumno(alumno.id).catch(error => {
-        // El error ya se muestra en App.jsx con alert
-        console.error("Error al eliminar alumno desde AlumnosLista:", error);
-      });
-    }
-  };
-  // --- FIN AÑADIDO ---
+   const handleDelete = async (id) => {
+     // Añadir confirmación aquí también
+     if (window.confirm("¿Seguro que quieres eliminar este alumno? Asegúrate de que no tenga clases asociadas.")) {
+         try {
+             await onDeleteAlumno(id);
+             alert('Alumno eliminado.');
+             // No necesitamos cerrar modal aquí porque no se abre al borrar
+         } catch (error) {
+             // El alert de error ya está en App.jsx
+             console.error("Error eliminando alumno desde AlumnosLista");
+         }
+     }
+   };
 
-  const alumnosOrdenados = [...alumnos].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const alumnosOrdenados = [...alumnos].sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
 
   return (
-    <div className="border-t border-slate-200 pt-4 mt-4">
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-sm font-semibold text-slate-700">Alumnos ({alumnosOrdenados.length})</h3>
-        <div className="flex items-center gap-1">
-           <button
-            onClick={() => handleOpenModal()}
-            className="p-1.5 rounded-full text-indigo-600 hover:bg-indigo-100"
-            title="Añadir nuevo alumno"
-          >
-            <UserPlus size={18} />
-          </button>
-          <button
-             onClick={() => setListaVisible(!listaVisible)}
-             className="p-1.5 rounded-full text-slate-500 hover:bg-slate-100"
-             title={listaVisible ? "Ocultar lista" : "Mostrar lista"}
-           >
-            {listaVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
+    <div className="border border-slate-200 rounded-lg">
+      {/* Botón para desplegar/contraer */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100 rounded-t-lg"
+      >
+        <div className="flex items-center gap-2">
+          <User size={18} className="text-indigo-600" />
+          <span className="text-sm font-semibold text-slate-700">Alumnos ({alumnos.length})</span>
         </div>
-      </div>
+        {isOpen ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+      </button>
 
-      {/* --- LISTA MODIFICADA --- */}
-      {listaVisible && (
-        <div className="space-y-1 max-h-48 overflow-y-auto pr-2"> {/* Reducido space-y */}
+      {/* Lista desplegable */}
+      {isOpen && (
+        <div className="p-3 border-t border-slate-200 max-h-60 overflow-y-auto">
           {alumnosOrdenados.length > 0 ? (
-            alumnosOrdenados.map(alumno => (
-              // Ya no es un botón, es un div con botones dentro
-              <div
-                key={alumno.id}
-                className="flex items-center justify-between gap-2 p-2 rounded-md text-sm text-slate-700 hover:bg-slate-50" // Quitado hover:bg-slate-100
-              >
-                 {/* Nombre del alumno */}
-                 <div className="flex items-center gap-2 truncate flex-1">
-                    <User size={16} className="text-slate-400 shrink-0" />
-                    <span className="truncate">{alumno.nombre}</span>
-                 </div>
-
-                 {/* Botones de acción */}
-                 <div className="flex items-center shrink-0">
+            <ul className="space-y-2">
+              {alumnosOrdenados.map(alumno => (
+                <li key={alumno.id} className="flex justify-between items-center group text-sm">
+                  <span className="text-slate-700 truncate pr-2" title={alumno.nombre}>{alumno.nombre}</span>
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     {/* --- BOTÓN VER DETALLES AÑADIDO --- */}
+                     <button
+                       onClick={() => onOpenDetail(alumno)} // <-- Llama a la nueva función
+                       className="p-1 text-slate-500 hover:text-blue-600"
+                       title="Ver detalles"
+                     >
+                       <Eye size={16} />
+                     </button>
                     <button
-                        onClick={() => handleOpenModal(alumno)} // Abre modal para editar
-                        className="p-1 rounded text-slate-500 hover:bg-indigo-100 hover:text-indigo-600"
-                        title="Editar alumno"
+                      onClick={() => handleOpenModal(alumno)}
+                      className="p-1 text-slate-500 hover:text-indigo-600"
+                      title="Editar alumno"
                     >
-                        <Edit2 size={15} />
+                      <Edit2 size={16} />
                     </button>
                     <button
-                        onClick={() => handleDeleteClick(alumno)} // Llama a la función de eliminar
-                        className="p-1 rounded text-slate-500 hover:bg-red-100 hover:text-red-600"
-                        title="Eliminar alumno"
+                      onClick={() => handleDelete(alumno.id)}
+                      className="p-1 text-slate-500 hover:text-red-600"
+                      title="Eliminar alumno"
                     >
-                        <Trash2 size={15} />
+                      <Trash2 size={16} />
                     </button>
-                 </div>
-              </div>
-            ))
+                  </div>
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="text-sm text-slate-500 italic px-2">No hay alumnos añadidos.</p>
+            <p className="text-xs text-slate-500 italic text-center">No hay alumnos añadidos.</p>
           )}
+
+          {/* Botón Añadir Nuevo */}
+          <button
+            onClick={() => handleOpenModal()}
+            className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 rounded-md hover:bg-indigo-100"
+          >
+            <Plus size={14} /> Añadir Alumno
+          </button>
         </div>
       )}
-      {/* --- FIN LISTA MODIFICADA --- */}
 
-
+      {/* Modal para añadir/editar */}
       {modalOpen && (
         <AlumnoModal
-          alumno={alumnoSeleccionado}
-          onClose={handleCloseModal}
+          alumno={alumnoToEdit}
+          onClose={() => { setModalOpen(false); setAlumnoToEdit(null); }}
           onSave={handleSave}
-          onDelete={onDeleteAlumno} // Pasamos onDelete para el botón dentro del modal
-          isLoading={isSaving}
+          onDelete={handleDelete} // Pasar handleDelete por si se añade botón de borrar en el modal
+          isLoading={isLoading}
         />
       )}
     </div>

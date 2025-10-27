@@ -32,6 +32,7 @@ import ClaseModal from './components/ClaseModal';
 import DetalleClaseModal from './components/DetalleClaseModal';
 import AuthScreen from './components/AuthScreen';
 import ProfileModal from './components/ProfileModal';
+import AlumnoDetalleModal from './components/AlumnoDetalleModal';
 // No necesitamos importar AlumnoModal aquí, se usa dentro de Sidebar y ClaseModal
 
 
@@ -54,6 +55,8 @@ export default function App() {
     const [claseParaEditar, setClaseParaEditar] = useState(null);
     const [claseSeleccionada, setClaseSeleccionada] = useState(null);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [selectedAlumnoForDetail, setSelectedAlumnoForDetail] = useState(null);
+    const [isAlumnoDetailModalOpen, setIsAlumnoDetailModalOpen] = useState(false);
 
     // --- Efecto para Autenticación ---
     useEffect(() => {
@@ -290,6 +293,11 @@ export default function App() {
         }
     };
 
+    const handleOpenAlumnoDetail = (alumno) => {
+        setSelectedAlumnoForDetail(alumno);
+        setIsAlumnoDetailModalOpen(true);
+    };
+
 
     // --- LÓGICA DE CLASES (CRUD) ---
     const handleAddClaseClick = (fecha) => {
@@ -434,6 +442,7 @@ export default function App() {
                 onAddAlumno={handleAddAlumno} // Pasar funciones CRUD
                 onUpdateAlumno={handleUpdateAlumno}
                 onDeleteAlumno={handleDeleteAlumno}
+                onOpenDetail={handleOpenAlumnoDetail}
             />
 
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
@@ -470,6 +479,17 @@ export default function App() {
                     onAddAlumno={handleAddAlumno}
                     onUpdateAlumno={handleUpdateAlumno}
                     onDeleteAlumno={handleDeleteAlumno}
+                />
+            )}
+            {isAlumnoDetailModalOpen && selectedAlumnoForDetail && (
+                <AlumnoDetalleModal
+                    alumno={selectedAlumnoForDetail}
+                    // Filtrar las clases solo para este alumno
+                    clasesDelAlumno={clases.filter(c => c.alumno === selectedAlumnoForDetail.nombre)}
+                    onClose={() => {
+                        setIsAlumnoDetailModalOpen(false);
+                        setSelectedAlumnoForDetail(null);
+                    }}
                 />
             )}
             {claseSeleccionada && (
