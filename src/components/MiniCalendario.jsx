@@ -123,7 +123,6 @@ export default function MiniCalendario({ fechaActual, setFechaActual, clases }) 
                     </div>
                 </div>
             )}
-            sv: "Hola"
         </div>
     );
 }
