@@ -1,18 +1,50 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { formatFecha, getInicioSemana, addDays, toYYYYMMDD } from '../utils/dates';
-import { DollarSign, BookOpen, Clock, ChevronLeft, ChevronRight, Target, TrendingUp } from 'lucide-react';
+import { DollarSign, Clock, ChevronLeft, ChevronRight, Target, TrendingUp } from 'lucide-react';
 
-// Formateador de moneda (Mover fuera del componente principal)
+// Formateador de moneda
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
 };
+
+// --- FUNCIÓN UTILITARIA (Calcula semanas del mes) ---
+// Calcula las fechas de inicio de las semanas que caen en el mes de 'date'
+const getSemanasEnMes = (date) => {
+    const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+    const weeks = [];
+    let currentWeekStart = getInicioSemana(startOfMonth);
+
+    // Aseguramos que empezamos antes o en la primera semana del mes
+    if (currentWeekStart > startOfMonth && currentWeekStart.getMonth() === startOfMonth.getMonth()) {
+        currentWeekStart = getInicioSemana(addDays(startOfMonth, -7));
+    }
+
+    // Iteramos semana por semana
+    while (currentWeekStart <= endOfMonth || getInicioSemana(currentWeekStart).getMonth() === date.getMonth()) {
+        const weekEnd = addDays(currentWeekStart, 6);
+        weeks.push({
+            start: currentWeekStart,
+            end: weekEnd,
+            label: `${formatFecha(currentWeekStart, { day: 'numeric', month: 'short' })} - ${formatFecha(weekEnd, { day: 'numeric', month: 'short' })}`
+        });
+        currentWeekStart = addDays(currentWeekStart, 7);
+        // Evitar bucle infinito y limitar al mes siguiente
+        if (currentWeekStart > addDays(endOfMonth, 7)) break;
+    }
+
+    // Filtro para asegurar que las semanas tienen solapamiento significativo en el mes
+    return weeks.filter(week => week.start <= endOfMonth || week.end >= startOfMonth);
+};
+
 
 // --- Componente de Tarjeta (Stat Card) ENRIQUECIDO ---
 function StatCard({ title, value, icon, colorClass, borderClass }) {
     return (
         <div className={`bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow 
-      border-l-4 ${borderClass || 'border-slate-300'} flex items-center gap-4`}>
+            border-l-4 ${borderClass || 'border-slate-300'} flex items-center gap-4`}>
             <div className={`p-4 rounded-full ${colorClass} bg-opacity-30`}>
                 {icon}
             </div>
@@ -24,7 +56,7 @@ function StatCard({ title, value, icon, colorClass, borderClass }) {
     );
 }
 
-// --- Componente: Tarjeta de Progreso de Meta ---
+// Componente: Tarjeta de Progreso de Meta (se mantiene)
 function GoalProgressCard({ hours, targetHours, monthName }) {
     const percent = targetHours > 0 ? Math.min(100, (hours / targetHours) * 100) : 0;
     const progressColor = percent >= 100 ? 'bg-emerald-500' : 'bg-indigo-500';
@@ -57,7 +89,7 @@ function GoalProgressCard({ hours, targetHours, monthName }) {
     );
 }
 
-// --- Componente: Tarjeta de Ingreso Promedio Real ---
+// Componente: Tarjeta de Ingreso Promedio Real (se mantiene)
 function AverageRateCard({ avgRate, officialRate }) {
     const difference = avgRate - officialRate;
     const isHigher = difference > 0;
@@ -81,26 +113,61 @@ function AverageRateCard({ avgRate, officialRate }) {
     );
 }
 
+// --- Componente: Selector de Semana (se mantiene) ---
+function WeekSelector({ weeksInMonth, semanaMostrada, onSelectWeek }) {
+    const currentWeekStart = toYYYYMMDD(semanaMostrada);
+
+    return (
+        <div className="flex flex-wrap gap-2 justify-center p-3 bg-slate-100 rounded-lg shadow-inner border border-slate-200 mt-4">
+            {weeksInMonth.map((week) => {
+                const isSelected = toYYYYMMDD(week.start) === currentWeekStart;
+
+                return (
+                    <button
+                        key={toYYYYMMDD(week.start)}
+                        onClick={() => onSelectWeek(week.start)}
+                        className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors duration-200 
+                            ${isSelected
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-white text-slate-600 hover:bg-indigo-100 hover:text-indigo-700'
+                            }`}
+                    >
+                        {week.label}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 
 // --- Componente Principal del Dashboard ---
 export default function Dashboard({ clases, userProfile, fechaActual }) {
 
     const [fechaMostrada, setFechaMostrada] = useState(fechaActual);
+    const [semanaMostrada, setSemanaMostrada] = useState(getInicioSemana(fechaActual));
 
-    // --- LÓGICA DE NAVEGACIÓN ---
-    const handleNavegarMes = (direction) => {
-        const newDate = new Date(fechaMostrada);
-        newDate.setMonth(newDate.getMonth() + direction);
-        setFechaMostrada(newDate);
+    // Lógica de navegación mensual
+    const handleNavegarMes = useCallback((direction) => {
+        setFechaMostrada(prevDate => {
+            const newDate = new Date(prevDate);
+            newDate.setMonth(newDate.getMonth() + direction);
+            setSemanaMostrada(getInicioSemana(newDate)); // Resetear semana al inicio del nuevo mes
+            return newDate;
+        });
+    }, []);
+
+    // Lógica para cambiar la semana
+    const handleNavegarSemana = (newWeekStart) => {
+        setSemanaMostrada(newWeekStart);
     };
 
-
-    // --- Cálculos ENRIQUECIDOS ---
+    // --- CÁLCULO DE DATOS Y RANGOS (SIMPLIFICADO) ---
     const stats = useMemo(() => {
         if (!userProfile) {
             return {
-                ingresosHoy: 0, ingresosSemana: 0, ingresosMes: 0, horasMes: 0, horasHoy: 0, horasSemana: 0,
-                chartData: [], precioHora: 0, inicioSemanaActual: new Date(),
+                ingresosSemana: 0, ingresosMes: 0, horasMes: 0, horasSemana: 0,
+                chartData: [], precioHora: 0, inicioSemanaActual: semanaMostrada,
                 avgRateMes: 0, metaHorasMensual: 0,
             };
         }
@@ -108,30 +175,31 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         const precioHora = userProfile.precioHora || 0;
         const metaHorasMensual = userProfile.metaHorasMensual || 0;
 
-        const hoy = toYYYYMMDD(new Date());
-        const inicioSemanaActual = getInicioSemana(fechaMostrada);
+        // Rango de la semana SELECCIONADA
+        const inicioSemanaSeleccionada = semanaMostrada;
+        const finSemanaSeleccionada = addDays(semanaMostrada, 6);
+        const semanaYMD = toYYYYMMDD(inicioSemanaSeleccionada);
+        const finSemanaYMD = toYYYYMMDD(finSemanaSeleccionada);
+
+        // Rango del mes
         const inicioMesActual = new Date(fechaMostrada.getFullYear(), fechaMostrada.getMonth(), 1);
         const inicioMesSiguiente = new Date(fechaMostrada.getFullYear(), fechaMostrada.getMonth() + 1, 1);
-
-        const semanaYMD = toYYYYMMDD(inicioSemanaActual);
         const mesYMD = toYYYYMMDD(inicioMesActual);
 
         // Filtrar clases por períodos (solo pagadas)
         const clasesPagadas = clases.filter(c => c.estadoPago === 'Pagado');
-        const clasesDeSemana = clasesPagadas.filter(c => c.fecha >= semanaYMD && c.fecha < toYYYYMMDD(addDays(inicioSemanaActual, 7)));
-        const clasesDeMes = clasesPagadas.filter(c => c.fecha >= mesYMD && c.fecha < toYYYYMMDD(inicioMesSiguiente));
-        const clasesDeHoy = clasesPagadas.filter(c => c.fecha === hoy);
 
+        // Filtrar usando la semana seleccionada
+        const clasesDeSemana = clasesPagadas.filter(c => c.fecha >= semanaYMD && c.fecha <= finSemanaYMD);
+        const clasesDeMes = clasesPagadas.filter(c => c.fecha >= mesYMD && c.fecha < toYYYYMMDD(inicioMesSiguiente));
 
         // Sumas
-        const ingresosHoy = clasesDeHoy.reduce((sum, c) => sum + (c.ingreso || 0), 0);
         const ingresosSemana = clasesDeSemana.reduce((sum, c) => sum + (c.ingreso || 0), 0);
         const ingresosMes = clasesDeMes.reduce((sum, c) => sum + (c.ingreso || 0), 0);
         const horasMes = clasesDeMes.reduce((sum, c) => sum + (c.duracionHoras || 0), 0);
-        const horasHoy = clasesDeHoy.reduce((sum, c) => sum + (c.duracionHoras || 0), 0);
         const horasSemana = clasesDeSemana.reduce((sum, c) => sum + (c.duracionHoras || 0), 0);
 
-        // Tasa promedio real del mes
+        // Tasa promedio real del mes (Se mantiene para la tarjeta lateral de tasa)
         const avgRateMes = horasMes > 0 ? (ingresosMes / horasMes) : 0;
 
         // Datos para el gráfico (se mantiene igual)
@@ -150,12 +218,17 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         });
         const chartData = Object.values(ingresosPorDia).sort((a, b) => a.name.localeCompare(b.name));
 
+
         return {
-            ingresosHoy, ingresosSemana, ingresosMes, horasMes, horasHoy, horasSemana,
-            chartData, precioHora, inicioSemanaActual,
+            ingresosSemana, ingresosMes, horasMes, horasSemana,
+            chartData, precioHora, inicioSemanaActual: inicioSemanaSeleccionada,
             avgRateMes, metaHorasMensual
         };
-    }, [clases, fechaMostrada, userProfile]);
+    }, [clases, fechaMostrada, semanaMostrada, userProfile]);
+
+    // Calcular las semanas del mes seleccionado para el WeekSelector
+    const weeksInMonth = useMemo(() => getSemanasEnMes(fechaMostrada), [fechaMostrada]);
+
 
     // Manejar estado de carga
     if (!userProfile) {
@@ -168,14 +241,10 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
 
     const monthName = formatFecha(fechaMostrada, { month: 'long' });
 
-    // --- CÁLCULO DE ETIQUETAS DE FECHA DETALLADAS (NUEVO) ---
-    const todayDateLabel = formatFecha(new Date(), { day: 'numeric', month: 'short', year: 'numeric' });
-
+    // --- CÁLCULO DE ETIQUETAS DE FECHA DETALLADAS ---
     const semanaInicio = stats.inicioSemanaActual;
     const semanaFin = addDays(stats.inicioSemanaActual, 6);
-    // Formato: 26 oct - 1 nov 2025
     const weekDateLabel = `${formatFecha(semanaInicio, { day: 'numeric', month: 'short' })} - ${formatFecha(semanaFin, { day: 'numeric', month: 'short', year: 'numeric' })}`;
-
     const monthDateLabel = formatFecha(fechaMostrada, { month: 'long', year: 'numeric' });
 
 
@@ -183,148 +252,149 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         <div className="flex-1 overflow-y-auto bg-slate-50 p-6">
 
             {/* CABECERA DE NAVEGACIÓN */}
-            <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-md border border-slate-200">
-                <h2 className="text-3xl font-bold text-slate-800">
-                    Dashboard de Ingresos 📈
-                </h2>
-                <div className="flex items-center gap-4">
-                    <span className="text-xl font-semibold text-indigo-600">
-                        {formatFecha(fechaMostrada, { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button
-                        onClick={() => handleNavegarMes(-1)}
-                        className="p-2 rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
-                        aria-label="Mes anterior"
-                    >
-                        <ChevronLeft size={20} />
-                    </button>
-                    <button
-                        onClick={() => handleNavegarMes(1)}
-                        className="p-2 rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
-                        aria-label="Mes siguiente"
-                    >
-                        <ChevronRight size={20} />
-                    </button>
+            <div className="bg-white p-4 rounded-xl shadow-md border border-slate-200">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-3xl font-bold text-slate-800">
+                        Dashboard de Ingresos 📈
+                    </h2>
+                    <div className="flex items-center gap-4">
+                        <span className="text-xl font-semibold text-indigo-600">
+                            {formatFecha(fechaMostrada, { month: 'long', year: 'numeric' })}
+                        </span>
+                        <button
+                            onClick={() => handleNavegarMes(-1)}
+                            className="p-2 rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+                            aria-label="Mes anterior"
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+                        <button
+                            onClick={() => handleNavegarMes(1)}
+                            className="p-2 rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+                            aria-label="Mes siguiente"
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                    </div>
                 </div>
+
+                {/* SELECTOR DE SEMANAS DENTRO DEL MES */}
+                <WeekSelector
+                    weeksInMonth={weeksInMonth}
+                    semanaMostrada={semanaMostrada}
+                    onSelectWeek={handleNavegarSemana}
+                />
             </div>
             {/* FIN CABECERA DE NAVEGACIÓN */}
 
-            {/* Alerta si falta precio/hora */}
-            {stats.precioHora === 0 && (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 mb-6 rounded-md shadow-md">
-                    <p className="font-bold">🚨 ¡ACCIÓN REQUERIDA! 🚨</p>
-                    <p className="text-sm">Define tus **Honorarios por Hora** en el menú de "Editar Perfil" para que los cálculos de ingresos sean precisos. (Actualmente a 0€)</p>
-                </div>
-            )}
+            <div className="mt-6">
+                {/* Alerta si falta precio/hora */}
+                {stats.precioHora === 0 && (
+                    <div className="bg-red-100 border-l-4 border-red-500 text-red-800 p-4 mb-6 rounded-md shadow-md">
+                        <p className="font-bold">🚨 ¡ACCIÓN REQUERIDA! 🚨</p>
+                        <p className="text-sm">Define tus **Honorarios por Hora** en el menú de "Editar Perfil" para que los cálculos de ingresos sean precisos. (Actualmente a 0€)</p>
+                    </div>
+                )}
 
-            {/* 1. Tarjetas de Estadísticas (Fila Superior) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <StatCard
-                    title={`Ingresos Hoy (${stats.horasHoy.toFixed(1)} h)`}
-                    value={formatCurrency(stats.ingresosHoy)}
-                    icon={<DollarSign size={24} className="text-green-600" />}
-                    colorClass="bg-green-200"
-                    borderClass="border-green-500"
-                />
-                <StatCard
-                    title={`Ingresos Semana (${formatFecha(stats.inicioSemanaActual, { day: 'numeric', month: 'short' })})`}
-                    value={formatCurrency(stats.ingresosSemana)}
-                    icon={<DollarSign size={24} className="text-indigo-600" />}
-                    colorClass="bg-indigo-200"
-                    borderClass="border-indigo-500"
-                />
-                <StatCard
-                    title={`Ingresos ${monthName}`}
-                    value={formatCurrency(stats.ingresosMes)}
-                    icon={<DollarSign size={24} className="text-orange-600" />}
-                    colorClass="bg-orange-200"
-                    borderClass="border-orange-500"
-                />
-                <StatCard
-                    title={`Horas Netas ${monthName}`}
-                    value={`${stats.horasMes.toFixed(1)} h`}
-                    icon={<Clock size={24} className="text-blue-600" />}
-                    colorClass="bg-blue-200"
-                    borderClass="border-blue-500"
-                />
-            </div>
+                {/* 1. Tarjetas de Estadísticas (Fila Superior - AHORA TRES COLUMNAS) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-8">
 
-            {/* 2. CONTENIDO PRINCIPAL: Gráfico y Detalles */}
-            <div className="flex flex-col lg:flex-row gap-6">
-                {/* IZQUIERDA (Gráfico Principal) */}
-                <div className="lg:w-3/5 bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                    <h3 className="text-xl font-bold text-slate-700 mb-6">
-                        Detalle de Ingresos Diarios en {monthName}
-                    </h3>
-                    {stats.chartData.length > 0 ? (
-                        <div style={{ width: '100%', height: 400 }}>
-                            <ResponsiveContainer>
-                                <BarChart data={stats.chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                    <XAxis dataKey="name" fontSize={12} />
-                                    <YAxis fontSize={12} tickFormatter={(value) => `€${Math.floor(value)}`} />
-                                    <Tooltip
-                                        cursor={{ fill: 'rgba(79, 70, 229, 0.1)' }}
-                                        formatter={(value) => [formatCurrency(value), 'Ingresos']}
-                                        labelFormatter={(label) => `Día ${label}`}
-                                    />
-                                    <Bar dataKey="Ingresos" fill="#4f46e5" radius={[6, 6, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    ) : (
-                        <p className="text-slate-500 text-center py-20">No hay datos de ingresos este mes.</p>
-                    )}
+                    {/* Tarjeta 1: Ingresos Semana (Ahora la primera y más relevante) */}
+                    <StatCard
+                        title={`Ingresos Semana (${formatFecha(stats.inicioSemanaActual, { day: 'numeric', month: 'short' })})`}
+                        value={formatCurrency(stats.ingresosSemana)}
+                        icon={<DollarSign size={24} className="text-indigo-600" />}
+                        colorClass="bg-indigo-200"
+                        borderClass="border-indigo-500"
+                    />
+
+                    {/* Tarjeta 2: Ingresos Mes */}
+                    <StatCard
+                        title={`Ingresos ${monthName}`}
+                        value={formatCurrency(stats.ingresosMes)}
+                        icon={<DollarSign size={24} className="text-orange-600" />}
+                        colorClass="bg-orange-200"
+                        borderClass="border-orange-500"
+                    />
+
+                    {/* Tarjeta 3: Horas Mes */}
+                    <StatCard
+                        title={`Horas Netas ${monthName}`}
+                        value={`${stats.horasMes.toFixed(1)} h`}
+                        icon={<Clock size={24} className="text-blue-600" />}
+                        colorClass="bg-blue-200"
+                        borderClass="border-blue-500"
+                    />
                 </div>
 
-                {/* DERECHA (Tarjetas Adicionales) */}
-                <div className="lg:w-2/5 flex flex-col gap-6">
-                    {/* --- RESUMEN DE PRODUCTIVIDAD (AHORA CON FECHAS DETALLADAS) --- */}
-                    <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                        <h3 className="text-lg font-semibold text-slate-700 mb-4">
-                            <span className='mr-2 text-indigo-500'>🚀</span> Productividad Acumulada
+                {/* 2. CONTENIDO PRINCIPAL: Gráfico y Detalles */}
+                <div className="flex flex-col lg:flex-row gap-6">
+                    {/* IZQUIERDA (Gráfico Principal) */}
+                    <div className="lg:w-3/5 bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                        <h3 className="text-xl font-bold text-slate-700 mb-6">
+                            Detalle de Ingresos Diarios en {monthName}
                         </h3>
-                        <div className="space-y-4">
-                            {/* Cabecera de la "tabla" */}
-                            <div className="grid grid-cols-3 text-sm font-medium text-slate-500 border-b pb-1">
-                                <span>Periodo</span>
-                                <span className="text-right">Horas</span>
-                                <span className="text-right">Ingresos</span>
+                        {stats.chartData.length > 0 ? (
+                            <div style={{ width: '100%', height: 400 }}>
+                                <ResponsiveContainer>
+                                    <BarChart data={stats.chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                        <XAxis dataKey="name" fontSize={12} />
+                                        <YAxis fontSize={12} tickFormatter={(value) => `€${Math.floor(value)}`} />
+                                        <Tooltip
+                                            cursor={{ fill: 'rgba(79, 70, 229, 0.1)' }}
+                                            formatter={(value) => [formatCurrency(value), 'Ingresos']}
+                                            labelFormatter={(label) => `Día ${label}`}
+                                        />
+                                        <Bar dataKey="Ingresos" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
+                        ) : (
+                            <p className="text-slate-500 text-center py-20">No hay datos de ingresos este mes.</p>
+                        )}
+                    </div>
 
-                            {/* Fila: Hoy */}
-                            <div className="grid grid-cols-3 items-center text-slate-800">
-                                <span className="font-medium text-sm text-slate-600 whitespace-nowrap">
-                                    Hoy ({todayDateLabel})
-                                </span>
-                                <span className="text-right font-semibold text-blue-600">{stats.horasHoy.toFixed(1)} h</span>
-                                <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosHoy)}</span>
-                            </div>
+                    {/* DERECHA (Tarjetas Adicionales) */}
+                    <div className="lg:w-2/5 flex flex-col gap-6">
+                        {/* --- RESUMEN DE PRODUCTIVIDAD (SIMPLIFICADO) --- */}
+                        <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                            <h3 className="text-lg font-semibold text-slate-700 mb-4">
+                                <span className='mr-2 text-indigo-500'>🚀</span> Productividad Acumulada
+                            </h3>
+                            <div className="space-y-4">
+                                {/* Cabecera de la "tabla" */}
+                                <div className="grid grid-cols-3 text-sm font-medium text-slate-500 border-b pb-1">
+                                    <span>Periodo</span>
+                                    <span className="text-right">Horas</span>
+                                    <span className="text-right">Ingresos</span>
+                                </div>
 
-                            {/* Fila: Semana */}
-                            <div className="grid grid-cols-3 items-center text-slate-800 border-t pt-2">
-                                <span className="font-medium text-sm text-slate-600 whitespace-nowrap">
-                                    Esta Semana ({weekDateLabel})
-                                </span>
-                                <span className="text-right font-semibold text-blue-600">{stats.horasSemana.toFixed(1)} h</span>
-                                <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosSemana)}</span>
-                            </div>
+                                {/* Fila: Semana */}
+                                <div className="grid grid-cols-3 items-center text-slate-800 pt-2">
+                                    <span className="font-medium text-sm text-slate-600 whitespace-nowrap">
+                                        Semana Seleccionada ({weekDateLabel})
+                                    </span>
+                                    <span className="text-right font-semibold text-blue-600">{stats.horasSemana.toFixed(1)} h</span>
+                                    <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosSemana)}</span>
+                                </div>
 
-                            {/* Fila: Mes */}
-                            <div className="grid grid-cols-3 items-center text-slate-800 border-t pt-2">
-                                <span className="font-medium text-sm text-slate-600 whitespace-nowrap">
-                                    Este Mes ({monthDateLabel})
-                                </span>
-                                <span className="text-right font-semibold text-blue-600">{stats.horasMes.toFixed(1)} h</span>
-                                <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosMes)}</span>
-                            </div>
+                                {/* Fila: Mes */}
+                                <div className="grid grid-cols-3 items-center text-slate-800 border-t pt-2">
+                                    <span className="font-medium text-sm text-slate-600 whitespace-nowrap">
+                                        Este Mes ({monthDateLabel})
+                                    </span>
+                                    <span className="text-right font-semibold text-blue-600">{stats.horasMes.toFixed(1)} h</span>
+                                    <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosMes)}</span>
+                                </div>
 
-                            {/* Proyección Anual (Bonus) */}
-                            <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-dashed border-slate-200">
-                                <span className="font-bold text-base flex items-center text-slate-700">
-                                    <TrendingUp size={18} className='text-orange-500 mr-2' /> Proyección Anual
-                                </span>
-                                <span className="font-extrabold text-xl text-indigo-700">{formatCurrency(stats.ingresosMes * 12)}</span>
+                                {/* Proyección Anual (Bonus) */}
+                                <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-dashed border-slate-200">
+                                    <span className="font-bold text-base flex items-center text-slate-700">
+                                        <TrendingUp size={18} className='text-orange-500 mr-2' /> Proyección Anual
+                                    </span>
+                                    <span className="font-extrabold text-xl text-indigo-700">{formatCurrency(stats.ingresosMes * 12)}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
