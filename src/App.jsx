@@ -61,29 +61,29 @@ export default function App() {
 
   // --- Efectos (Auth, Carga de Datos, Perfil) ---
   useEffect(() => {
-     if (!auth) { console.warn("Auth no está listo todavía."); setIsLoading(false); setIsAuthReady(false); return; }
-     setIsLoading(true);
-     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-       if (user) {
-         setUser(user);
-         setIsAuthReady(true);
-       } else {
-         setUser(null);
-         setUserProfile(null); // Limpiar perfil al cerrar sesión
-         setIsAuthReady(true);
-         setClases([]);
-         setAlumnos([]);
-         setIsDataLoading(false);
-       }
-       setIsLoading(false);
-     });
-     return () => unsubscribeAuth();
+    if (!auth) { console.warn("Auth no está listo todavía."); setIsLoading(false); setIsAuthReady(false); return; }
+    setIsLoading(true);
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUser(user);
+        setIsAuthReady(true);
+      } else {
+        setUser(null);
+        setUserProfile(null); // Limpiar perfil al cerrar sesión
+        setIsAuthReady(true);
+        setClases([]);
+        setAlumnos([]);
+        setIsDataLoading(false);
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribeAuth();
   }, []);
 
   // --- Efecto para Cargar Perfil, Clases y Alumnos ---
   useEffect(() => {
     if (!isAuthReady || !user) {
-      if(isAuthReady && !user) setIsDataLoading(false);
+      if (isAuthReady && !user) setIsDataLoading(false);
       return;
     }
 
@@ -92,17 +92,17 @@ export default function App() {
     // 1. Listener para Perfil de Usuario (Honorarios)
     const userDocRef = doc(db, 'users', user.uid);
     const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists()) {
-            const profileData = docSnap.data();
-            setUserProfile(profileData);
-            console.log("Perfil de Usuario cargado/actualizado. Precio Hora:", profileData.precioHora); 
-        } else {
-            // Inicializar perfil si no existe (ej: después de un registro)
-            const defaultProfile = { precioHora: 0 };
-            setDoc(userDocRef, defaultProfile, { merge: true }).catch(e => console.error("Error setting default profile:", e));
-            setUserProfile(defaultProfile);
-            console.log("Perfil de Usuario inicializado. Precio Hora: 0"); 
-        }
+      if (docSnap.exists()) {
+        const profileData = docSnap.data();
+        setUserProfile(profileData);
+        console.log("Perfil de Usuario cargado/actualizado. Precio Hora:", profileData.precioHora);
+      } else {
+        // Inicializar perfil si no existe (ej: después de un registro)
+        const defaultProfile = { precioHora: 0 };
+        setDoc(userDocRef, defaultProfile, { merge: true }).catch(e => console.error("Error setting default profile:", e));
+        setUserProfile(defaultProfile);
+        console.log("Perfil de Usuario inicializado. Precio Hora: 0");
+      }
     }, (error) => { console.error("Error al escuchar Perfil:", error); setUserProfile(null); });
 
 
@@ -113,7 +113,7 @@ export default function App() {
       const clasesData = [];
       snapshot.forEach(doc => {
         const data = doc.data();
-        if(data && typeof data.materia === 'string') {
+        if (data && typeof data.materia === 'string') {
           clasesData.push({ ...data, id: doc.id });
         }
       });
@@ -126,7 +126,7 @@ export default function App() {
     const unsubscribeAlumnos = onSnapshot(qAlumnos, (snapshot) => {
       const alumnosData = [];
       snapshot.forEach(doc => {
-        if(doc.data() && doc.data().nombre) {
+        if (doc.data() && doc.data().nombre) {
           alumnosData.push({ ...doc.data(), id: doc.id });
         }
       });
@@ -154,9 +154,18 @@ export default function App() {
     }
   };
 
-  const handleEmailLogin = async (email, password) => { /* ... */ };
+  const handleEmailLogin = async (email, password) => {
+    if (!auth) throw new Error("Auth not initialized");
+    await signInWithEmailAndPassword(auth, email, password);
+    console.log("Email Sign In successful.");
+  };
 
-  const handleLogout = async () => { /* ... */ };
+  const handleLogout = async () => {
+    if (!auth) { console.error("Auth not initialized"); return; }
+    try {
+      await signOut(auth);
+    } catch (error) { console.error("Error signing out:", error); alert(`Error al cerrar sesión: ${error.message}`); }
+  };
 
   // --- LÓGICA DE PERFIL (AJUSTADA PARA HONORARIOS) ---
   const handleSaveProfile = async (fotoFileOrUrl, nuevoNombre, nuevoPrecioHora) => {
@@ -189,8 +198,8 @@ export default function App() {
         photoURL: photoURLToSave
       }));
       setUserProfile(prevProfile => ({
-          ...prevProfile,
-          precioHora: parseFloat(nuevoPrecioHora) || 0
+        ...prevProfile,
+        precioHora: parseFloat(nuevoPrecioHora) || 0
       }));
 
       console.log("Perfil y Honorarios actualizados.");
@@ -208,12 +217,12 @@ export default function App() {
     const collRef = collection(db, `users/${user.uid}/alumnos`);
     if ('id' in alumnoData) delete alumnoData.id;
     try {
-        const docRef = await addDoc(collRef, alumnoData);
-        return { ...alumnoData, id: docRef.id };
+      const docRef = await addDoc(collRef, alumnoData);
+      return { ...alumnoData, id: docRef.id };
     } catch (error) {
-        console.error("Error al añadir alumno:", error);
-        alert(`Error al guardar el alumno: ${error.message}`);
-        throw error;
+      console.error("Error al añadir alumno:", error);
+      alert(`Error al guardar el alumno: ${error.message}`);
+      throw error;
     }
   };
   const handleUpdateAlumno = async (alumnoData) => {
@@ -236,23 +245,23 @@ export default function App() {
     const clasesRef = collection(db, `users/${user.uid}/clases`);
     const q = query(clasesRef, where("alumno", "==", alumnoNombre));
     try {
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            alert(`No se puede eliminar a este alumno porque tiene ${querySnapshot.size} clase(s) asociada(s). Elimina o reasigna primero sus clases.`);
-            return;
-        }
-    } catch (error) {
-        console.error("Error al comprobar clases asociadas:", error);
-        alert("Error al verificar si el alumno tiene clases. Inténtalo de nuevo.");
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        alert(`No se puede eliminar a este alumno porque tiene ${querySnapshot.size} clase(s) asociada(s). Elimina o reasigna primero sus clases.`);
         return;
+      }
+    } catch (error) {
+      console.error("Error al comprobar clases asociadas:", error);
+      alert("Error al verificar si el alumno tiene clases. Inténtalo de nuevo.");
+      return;
     }
     const docRef = doc(db, `users/${user.uid}/alumnos`, alumnoId);
     try {
-        await deleteDoc(docRef);
+      await deleteDoc(docRef);
     } catch (error) {
-        console.error("Error al eliminar alumno:", error);
-        alert(`Error al eliminar el alumno: ${error.message}`);
-        throw error;
+      console.error("Error al eliminar alumno:", error);
+      alert(`Error al eliminar el alumno: ${error.message}`);
+      throw error;
     }
   };
 
@@ -270,7 +279,7 @@ export default function App() {
     setClaseParaEditar(clase);
     setModalAbierto(true);
   };
-  
+
   const handleSaveClase = async (claseData) => {
     if (!user) { console.error("Usuario no autenticado."); return; }
     if (!db) { console.error("Firestore no inicializado."); return; }
@@ -280,19 +289,19 @@ export default function App() {
 
     // Lógica de Cálculo de Ingresos
     const duracionHoras = calcularDuracionEnHoras(claseData.inicio, claseData.fin);
-    const precioHora = userProfile?.precioHora || 0; 
+    const precioHora = userProfile?.precioHora || 0;
     const ingresoCalculado = duracionHoras * precioHora;
-    
+
     // Preparar datos para Firestore
     // Usamos destructuring para extraer el 'id' y el 'userProfile' si estuvieran ahí,
     // y solo incluimos el resto de campos.
     const { id, userProfile: _, ...claseFields } = claseData;
-    
+
     const dataToSave = {
-        ...claseFields,
-        duracionHoras: duracionHoras,
-        ingreso: parseFloat(ingresoCalculado.toFixed(2)),
-        fecha: toYYYYMMDD(new Date(claseData.fecha)) 
+      ...claseFields,
+      duracionHoras: duracionHoras,
+      ingreso: parseFloat(ingresoCalculado.toFixed(2)),
+      fecha: toYYYYMMDD(new Date(claseData.fecha))
     };
 
     // Validaciones
@@ -308,7 +317,7 @@ export default function App() {
       if (isEditing) {
         // Actualizar (usamos el id original)
         const docRef = doc(db, clasesPath, id);
-        await updateDoc(docRef, dataToSave); 
+        await updateDoc(docRef, dataToSave);
       } else {
         // Añadir (dataToSave no tiene la propiedad 'id')
         await addDoc(collection(db, clasesPath), dataToSave);
@@ -330,27 +339,27 @@ export default function App() {
     const readyClases = !isDataLoading ? (Array.isArray(clases) ? clases : []) : [];
     const safeDate = (fechaActual instanceof Date && !isNaN(fechaActual)) ? fechaActual : new Date();
 
-    switch(vista) {
+    switch (vista) {
       case 'semana':
         return <VistaSemana fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} />;
       case 'dia':
         return <VistaDia fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} />;
       case 'dashboard':
-        return <Dashboard 
-                  clases={readyClases} 
-                  userProfile={userProfile} 
-                  fechaActual={safeDate} 
-               />;
+        return <Dashboard
+          clases={readyClases}
+          userProfile={userProfile}
+          fechaActual={safeDate}
+        />;
       case 'mes':
       default:
         return <VistaMes
-                  fechaActual={safeDate}
-                  clases={readyClases}
-                  onSelectClase={setClaseSeleccionada}
-                  onAddClase={handleAddClaseClick}
-                  setVista={setVista}
-                  setFechaActual={setFechaActual}
-               />;
+          fechaActual={safeDate}
+          clases={readyClases}
+          onSelectClase={setClaseSeleccionada}
+          onAddClase={handleAddClaseClick}
+          setVista={setVista}
+          setFechaActual={setFechaActual}
+        />;
     }
   };
 
@@ -398,8 +407,8 @@ export default function App() {
           {vista !== 'dashboard' && <CabeceraSemana fechaActual={fechaActual || new Date()} vista={vista} />}
           {vista !== 'dashboard' && <CabeceraMes vista={vista} />}
           {isDataLoading ? (
-             <div className="flex-1 flex items-center justify-center text-slate-500">Cargando datos...</div>
-           ) : renderVista()}
+            <div className="flex-1 flex items-center justify-center text-slate-500">Cargando datos...</div>
+          ) : renderVista()}
         </div>
       </main>
 
