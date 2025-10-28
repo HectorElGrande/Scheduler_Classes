@@ -68,7 +68,7 @@ export default function AlumnosLista({ alumnos, onAddAlumno, onUpdateAlumno, onD
           <User size={18} className="text-indigo-600" />
           <span className="text-sm font-semibold text-slate-700">Alumnos ({alumnos.length})</span>
         </div>
-        {isOpen ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+        {isOpen ? <ChevronDown size={18} className="text-slate-500" /> : <ChevronUp size={18} className="text-slate-500" />}
       </button>
 
       {/* Contenedor del desplegable */}

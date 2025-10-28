@@ -443,6 +443,7 @@ export default function App() {
                 onUpdateAlumno={handleUpdateAlumno}
                 onDeleteAlumno={handleDeleteAlumno}
                 onOpenDetail={handleOpenAlumnoDetail}
+                onSaveClase={handleSaveClase}
             />
 
             <main className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">

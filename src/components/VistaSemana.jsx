@@ -16,7 +16,7 @@ export default function VistaSemana({ fechaActual, clases, onSelectClase }) {
         // Add safety check for parsed hours
         if (isNaN(inicioH) || isNaN(finH)) return {};
         const inicioEnMinutos = (inicioH - 8) * 60 + inicioM; const finEnMinutos = (finH - 8) * 60 + finM;
-        const duracionTotalEnMinutos = (21 - 8) * 60; const duracionEventoEnMinutos = finEnMinutos - inicioEnMinutos;
+        const duracionTotalEnMinutos = (23 - 8) * 60; const duracionEventoEnMinutos = finEnMinutos - inicioEnMinutos;
         if (duracionTotalEnMinutos <= 0 || duracionEventoEnMinutos < 0) return {};
         const top = (inicioEnMinutos / duracionTotalEnMinutos) * 100; const height = (duracionEventoEnMinutos / duracionTotalEnMinutos) * 100;
         const clampedTop = Math.max(0, Math.min(top, 100)); const clampedHeight = Math.max(0, Math.min(height, 100 - clampedTop));

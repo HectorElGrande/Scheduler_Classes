@@ -15,7 +15,7 @@ export default function VistaDia({ fechaActual, clases, onSelectClase }) {
         const [inicioH_str, inicioM_str] = clase.inicio.split(':'); const inicioH = parseInt(inicioH_str, 10); const inicioM = parseInt(inicioM_str, 10) || 0;
         const [finH_str, finM_str] = clase.fin.split(':'); const finH = parseInt(finH_str, 10); const finM = parseInt(finM_str, 10) || 0;
         if (isNaN(inicioH) || isNaN(finH)) return {};
-        const HORA_INICIO_GRID = 8; const HORA_FIN_GRID = 21; const DURACION_TOTAL_MINUTOS = (HORA_FIN_GRID - HORA_INICIO_GRID) * 60;
+        const HORA_INICIO_GRID = 8; const HORA_FIN_GRID = 23; const DURACION_TOTAL_MINUTOS = (HORA_FIN_GRID - HORA_INICIO_GRID) * 60;
         const inicioEnMinutos = (inicioH - HORA_INICIO_GRID) * 60 + inicioM; const finEnMinutos = (finH - HORA_INICIO_GRID) * 60 + finM;
         const duracionEventoEnMinutos = finEnMinutos - inicioEnMinutos;
         if (DURACION_TOTAL_MINUTOS <= 0 || duracionEventoEnMinutos < 0) return {};
