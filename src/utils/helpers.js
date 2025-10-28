@@ -25,3 +25,16 @@ export const detectarSolapamiento = (nuevaClase, clasesExistentes, idActual) => 
     }
     return null; // No overlap found
 };
+
+export const calcularDuracionEnHoras = (inicio, fin) => {
+  try {
+    const [inicioH, inicioM] = inicio.split(':').map(Number);
+    const [finH, finM] = fin.split(':').map(Number);
+    if (isNaN(inicioH) || isNaN(finH) || isNaN(inicioM) || isNaN(finM)) return 0;
+    const inicioEnMinutos = inicioH * 60 + inicioM;
+    const finEnMinutos = finH * 60 + finM;
+    const duracionEnMinutos = finEnMinutos - inicioEnMinutos;
+    if (duracionEnMinutos <= 0) return 0;
+    return duracionEnMinutos / 60;
+  } catch { return 0; }
+};

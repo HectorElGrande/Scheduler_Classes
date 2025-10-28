@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 // Corregir/Verificar rutas de importación
-import MiniCalendario from './MiniCalendario'; // Asume que está en la misma carpeta (components)
-import AlumnosLista from './AlumnosLista';   // Asume que está en la misma carpeta (components)
+import MiniCalendario from './MiniCalendario'; // Asume que está en src/components/
+import AlumnosLista from './AlumnosLista';   // Asume que está en src/components/
 import { toYYYYMMDD } from '../utils/dates'; // Asume que dates.js está en src/utils/
 import { DollarSign } from 'lucide-react';
 
@@ -20,62 +20,68 @@ export default function Sidebar({
   }, [clases, hoyYMD]);
 
   const handleMarkAsPaid = async (clase) => {
-    if (savingClassId) return;
-    setSavingClassId(clase.id);
-    try {
-      await onSaveClase({ ...clase, estadoPago: 'Pagado' });
-    } catch (error) {
-      console.error("Error al marcar como pagado desde Sidebar:", error);
-      alert("No se pudo marcar la clase como pagada.");
-    } finally {
-      setSavingClassId(null);
-    }
+     if (savingClassId) return;
+     setSavingClassId(clase.id);
+     try {
+       await onSaveClase({ ...clase, estadoPago: 'Pagado' });
+     } catch (error) {
+       console.error("Error al marcar como pagado desde Sidebar:", error);
+       alert("No se pudo marcar la clase como pagada.");
+     } finally {
+       setSavingClassId(null);
+     }
   };
 
   return (
-    // Asegúrate que z-index y relative están aquí si son necesarios para la superposición
     <aside className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col h-screen relative z-20">
+      {/* --- CSS PERSONALIZADO PARA OCULTAR SCROLLBAR --- */}
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none; /* Webkit (Chrome, Safari, Edge) */
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+        }
+      `}</style>
+      {/* --- FIN CSS --- */}
+
       <MiniCalendario fechaActual={fechaActual || new Date()} setFechaActual={setFechaActual} clases={clases} />
 
       {/* Agenda de Hoy */}
-      <div className="flex-1 space-y-4 overflow-y-auto pt-6">
-        {/* --- TÍTULO MODIFICADO --- */}
+      <div className="flex-1 space-y-4 overflow-y-auto pt-6 hide-scrollbar">
         <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">Agenda de Hoy</h3>
-            {/* Badge con el número de clases */}
             {clasesHoy.length > 0 && (
                 <span className="bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">
                     {clasesHoy.length} clase{clasesHoy.length !== 1 ? 's' : ''}
                 </span>
             )}
         </div>
-        {/* --- FIN TÍTULO --- */}
 
         {clasesHoy.length > 0 ? (
           <div className="space-y-3">
             {clasesHoy.map(clase => (
               clase && clase.id ? (
                 <div key={clase.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 relative">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="text-sm font-semibold text-indigo-700">{clase.inicio || 'N/A'} - {clase.fin || 'N/A'}</span>
-                    {clase.estadoPago === 'Pagado' ? (
-                      <span className="text-xs text-green-600 font-medium ml-2">Pagado</span>
-                    ) : (
-                      <button
-                        onClick={() => handleMarkAsPaid(clase)}
-                        disabled={savingClassId === clase.id}
-                        className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-wait`}
-                        title="Marcar como Pagado"
-                      >
-                        <DollarSign size={12} />
-                        {savingClassId === clase.id ? '...' : ''}
-                        {/* Texto opcional del botón, puedes quitarlo si prefieres solo icono */}
-                        {/* Marcar pagado */}
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-sm font-medium text-slate-700 pr-10">{clase.materia || 'N/A'}</p>
-                  <p className="text-sm text-slate-500">{clase.alumno || 'N/A'}</p>
+                   <div className="flex justify-between items-start mb-1">
+                     <span className="text-sm font-semibold text-indigo-700">{clase.inicio || 'N/A'} - {clase.fin || 'N/A'}</span>
+                     {clase.estadoPago === 'Pagado' ? (
+                       <span className="text-xs text-green-600 font-medium ml-2">Pagado</span>
+                     ) : (
+                       <button
+                         onClick={() => handleMarkAsPaid(clase)}
+                         disabled={savingClassId === clase.id}
+                         className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 rounded-full hover:bg-green-200 disabled:opacity-50 disabled:cursor-wait`}
+                         title="Marcar como Pagado"
+                       >
+                         <DollarSign size={12} />
+                         {savingClassId === clase.id ? '...' : ''}
+                       </button>
+                     )}
+                   </div>
+                   <p className="text-sm font-medium text-slate-700 pr-10">{clase.materia || 'N/A'}</p>
+                   <p className="text-sm text-slate-500">{clase.alumno || 'N/A'}</p>
                 </div>
               ) : null
             ))}
@@ -83,7 +89,7 @@ export default function Sidebar({
         ) : (<p className="text-sm text-slate-500 italic">No hay clases programadas para hoy.</p>)}
       </div>
 
-      {/* Lista de Alumnos */}
+      {/* Lista de Alumnos (sin cambios) */}
       <div className="pt-6 mt-6 border-t border-slate-200">
         <AlumnosLista
           alumnos={alumnos}
