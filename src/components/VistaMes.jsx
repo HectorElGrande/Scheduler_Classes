@@ -1,27 +1,26 @@
 import React, { useMemo } from 'react';
-// Asegúrate que las rutas son correctas
+// Corregir la ruta de importación nuevamente
 import { getMatrizMes, toYYYYMMDD } from '../utils/dates';
 
-// Añadir setVista y setFechaActual a los props
+// Recibe setVista y setFechaActual como props
 export default function VistaMes({ fechaActual, clases, onSelectClase, onAddClase, setVista, setFechaActual }) {
     if (!Array.isArray(clases)) clases = [];
     // Validar props necesarios
     if (typeof setVista !== 'function' || typeof setFechaActual !== 'function') {
         console.error("VistaMes requiere setVista y setFechaActual como props.");
-        // Podrías retornar un mensaje de error o null
         return <div className="text-red-500 p-4">Error: Faltan props necesarios en VistaMes.</div>;
     }
     const safeFechaActual = (fechaActual instanceof Date && !isNaN(fechaActual)) ? fechaActual : new Date();
     const diasMes = useMemo(() => getMatrizMes(safeFechaActual), [safeFechaActual]);
     const hoyYMD = toYYYYMMDD(new Date());
 
-    // --- NUEVA FUNCIÓN HANDLER ---
+    // --- FUNCIÓN HANDLER MODIFICADA ---
     const handleVerMasClick = (e, dia) => {
         e.stopPropagation(); // Evitar que se active el onAddClase del div padre
         setFechaActual(dia); // Establecer la fecha actual al día clickeado
-        setVista('semana');  // Cambiar la vista a 'semana'
+        setVista('dia');      // Cambiar la vista a 'dia'
     };
-    // --- FIN NUEVA FUNCIÓN ---
+    // --- FIN FUNCIÓN MODIFICADA ---
 
     return (
         <div className="flex-1 grid grid-cols-7 grid-rows-6 border-r border-b border-slate-200">
@@ -35,6 +34,7 @@ export default function VistaMes({ fechaActual, clases, onSelectClase, onAddClas
                 const numClases = clasesDelDia.length;
 
                 return (
+                    // El div principal ya tiene 'relative'
                     <div key={fechaYMD} className={`relative p-2 border-t border-l border-slate-200 ${esMesActual ? 'bg-white' : 'bg-slate-50'} overflow-hidden flex flex-col cursor-pointer hover:bg-slate-100 transition-colors`} onClick={() => onAddClase(dia)}>
 
                         {/* Indicador número de día */}
@@ -49,10 +49,8 @@ export default function VistaMes({ fechaActual, clases, onSelectClase, onAddClas
                             </span>
                         )}
 
-                        {/* Lista de clases */}
-                        <div className="flex-1 space-y-1 overflow-y-auto">
+                        <div className="flex-1 space-y-1 overflow-y-auto pb-6">
                             {clasesDelDia.slice(0, 3).map(clase => (
-                                // ... (renderizado de cada clase sin cambios) ...
                                 clase && clase.id ? (
                                     <div key={clase.id} className={`text-xs rounded ${clase.estadoPago === 'Pagado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-800'} overflow-hidden`} onClick={(e) => { e.stopPropagation(); onSelectClase(clase); }}>
                                         <span className={`sm:hidden w-2 h-2 rounded-full m-1.5 inline-block ${clase.estadoPago === 'Pagado' ? 'bg-green-400' : 'bg-red-400'}`}></span>
@@ -62,17 +60,16 @@ export default function VistaMes({ fechaActual, clases, onSelectClase, onAddClas
                                     </div>
                                 ) : null
                             ))}
-                            {/* --- ENLACE "+ VER MÁS" (MODIFICADO) --- */}
-                            {numClases > 3 && (
-                                <button
-                                    onClick={(e) => handleVerMasClick(e, dia)} // Usar el nuevo handler
-                                    className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium w-full text-left mt-1" // Estilo de botón/enlace
-                                >
-                                    + Ver más
-                                </button>
-                            )}
-                            {/* --- FIN ENLACE --- */}
                         </div>
+                        {numClases > 0 && (
+                            <button
+                                onClick={(e) => handleVerMasClick(e, dia)}
+                                // Posicionamiento absoluto abajo a la izquierda dentro del padding
+                                className="absolute bottom-1 left-2 text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
+                            >
+                                + Ver más
+                            </button>
+                        )}
                     </div>
                 );
             })}
