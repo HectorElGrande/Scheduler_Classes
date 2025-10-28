@@ -4,7 +4,6 @@ import { toYYYYMMDD, formatFecha, getMatrizMes } from '../utils/dates';
 import { DIAS_SEMANA_COMPLETO } from '../utils/constants';
 
 export default function MiniCalendario({ fechaActual, setFechaActual, clases }) {
-    // ... (hooks y funciones sin cambios) ...
     const safeFechaActual = (fechaActual instanceof Date && !isNaN(fechaActual)) ? fechaActual : new Date();
     const [mesMostrado, setMesMostrado] = useState(new Date(safeFechaActual.getFullYear(), safeFechaActual.getMonth(), 1));
     const [hoveredDay, setHoveredDay] = useState(null);
@@ -51,22 +50,20 @@ export default function MiniCalendario({ fechaActual, setFechaActual, clases }) 
     }, [hoveredDay]);
 
     const getHeatMapClass = (numClases) => {
-        // Esta función aplica el fondo y el texto base
         if (numClases === 0) {
-            return 'bg-green-100 text-green-800 hover:bg-green-200 font-medium';
+            return 'bg-green-200 text-green-800 hover:bg-green-100 font-medium';
         }
         if (numClases <= 2) {
-            return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 font-medium';
+            return 'bg-yellow-200 text-yellow-800 hover:bg-yellow-100 font-medium';
         }
-        if (numClases <= 4) {
-            return 'bg-orange-100 text-orange-800 hover:bg-orange-200 font-medium';
+        if (numClases <= 3) {
+            return 'bg-orange-400 text-orange-800 hover:bg-orange-300 font-medium';
         }
-        return 'bg-red-100 text-red-800 hover:bg-red-200 font-bold';
+        return 'bg-red-300 text-red-800 hover:bg-red-200';
     };
 
     return (
         <div ref={calendarRef} className="relative bg-slate-50 p-4 rounded-lg border border-slate-200" onMouseLeave={handleMouseLeaveCalendar}>
-            {/* ... (Cabecera y días de la semana sin cambios) ... */}
             <div className="flex justify-between items-center mb-3">
                 <h4 className="text-sm font-semibold text-slate-700 capitalize">{formatFecha(mesMostrado, { month: 'long', year: 'numeric' })}</h4>
                 <div className="flex gap-1">
@@ -94,23 +91,17 @@ export default function MiniCalendario({ fechaActual, setFechaActual, clases }) 
                             key={ymd}
                             onClick={() => setFechaActual(dia)}
                             onMouseEnter={(e) => handleDayHover(e, ymd, clasesDia)}
-
-                            // --- SECCIÓN DE CLASSNAME (MODIFICADA) ---
-                            // Se añade "ring-inset" a las dos últimas líneas
                             className={`relative p-1 text-xs rounded-full flex items-center justify-center w-7 h-7 m-auto transition-colors
                 ${esMesActual ? getHeatMapClass(numClases) : 'text-slate-300'}
                 ${esSeleccionado ? 'ring-2 ring-inset ring-indigo-500' : ''}
                 ${!esSeleccionado && esHoy ? 'ring-2 ring-inset ring-blue-400' : ''}
               `}>
-                            {/* --- FIN SECCIÓN MODIFICADA --- */}
-
                             {dia.getDate()}
                         </button>
                     );
                 }) : <p>Error loading days</p>}
             </div>
 
-            {/* ... (El popover no cambia) ... */}
             {hoveredDay && hoveredClases.length > 0 && (
                 <div style={popoverStyle} className="bg-white p-3 rounded-lg shadow-xl border border-slate-200 w-48">
                     <h5 className="text-xs font-bold text-slate-800 mb-2 border-b pb-1 capitalize">{formatFecha(new Date(hoveredDay.ymd.replace(/-/g, '/')), { weekday: 'short', day: 'numeric', month: 'short' })}</h5>

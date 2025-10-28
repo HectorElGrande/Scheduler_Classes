@@ -24,20 +24,22 @@ export default function DetalleClaseModal({ clase, onClose, onEdit, onDelete, on
                     {clase.nivel && (<div className="flex items-center gap-3"><Tag size={18} className="text-slate-500" /><span>{clase.nivel}</span></div>)}
                     <div className="flex items-center gap-3"><Calendar size={18} className="text-slate-500" /><span className="capitalize">{clase.fecha ? formatFecha(new Date(clase.fecha.replace(/-/g, '/')), { weekday: 'long', day: 'numeric', month: 'long' }) : 'N/A'}</span></div>
                     <div className="flex items-center gap-3"><Clock size={18} className="text-slate-500" /><span>{clase.inicio || 'N/A'} - {clase.fin || 'N/A'}</span></div>
-
-                    {/* --- LÍNEA MODIFICADA (Texto) --- */}
                     <div className="flex items-center gap-3">{getEstadoPagoIcon()}<span>{clase.estadoPago === 'Pagado' ? 'Pagado' : 'No pagado'}</span></div>
-
                     {clase.notas && (<div className="flex items-start gap-3 pt-2"><FileText size={18} className="text-slate-500 shrink-0" /><p className="text-slate-600 whitespace-pre-wrap">{clase.notas}</p></div>)}
                 </div>
                 <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-200">
                     <div className="flex gap-2">
 
                         {/* --- BLOQUE MODIFICADO (Botón de acción) --- */}
-                        {clase.estadoPago !== 'Pagado' ?
-                            (<button onClick={() => handleSetPago('Pagado')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 rounded-full hover:bg-green-200" aria-label="Marcar como Pagado"><DollarSign size={14} /> Marcar como Pagado</button>) :
-                            (<button onClick={() => handleSetPago('No pagado')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-100 rounded-full hover:bg-red-200" aria-label="Marcar como No pagado"><Clock size={14} /> Marcar como No pagado</button>)
-                        }
+                        {clase.estadoPago !== 'Pagado' && (
+                            <button
+                                onClick={() => handleSetPago('Pagado')}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 rounded-full hover:bg-green-200"
+                                aria-label="Marcar como Pagado"
+                            >
+                                <DollarSign size={14} /> Marcar como Pagado
+                            </button>
+                        )}
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => { if (clase && clase.id) onDelete(clase.id); onClose(); }} className="p-2 text-slate-500 hover:bg-red-100 hover:text-red-600 rounded-full transition-colors" aria-label="Eliminar"><Trash2 size={20} /></button>

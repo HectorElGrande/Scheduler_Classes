@@ -518,7 +518,10 @@ export default function App() {
                 className={`fixed bottom-6 right-6 z-40 group flex items-center justify-start h-14 w-14 hover:w-48 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all duration-300 ease-in-out overflow-hidden ${(!!isLoading || !user || isDataLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 aria-label="Añadir nueva clase"
             >
-                <Plus size={28} className="shrink-0 ml-3.5" />
+                <Plus
+                    size={28}
+                    className="shrink-0 ml-3.5 transition-transform duration-500 ease-in-out group-hover:rotate-90"
+                />
                 <span className="text-sm font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 delay-100 ml-2 mr-4">Añadir nueva clase</span>
             </button>
         </div>

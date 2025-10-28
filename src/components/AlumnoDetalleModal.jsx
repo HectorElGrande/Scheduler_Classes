@@ -1,23 +1,63 @@
-import React, { useMemo } from 'react';
-import { X, User, Phone, Mail, BookOpen, Calendar, Clock, DollarSign } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, User, Phone, Mail, BookOpen, Calendar, Clock, Filter } from 'lucide-react';
 import { formatFecha, toYYYYMMDD } from '../utils/dates'; // Importar toYYYYMMDD
 
 export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose }) {
   if (!alumno) return null;
+
+  const [filtroPago, setFiltroPago] = useState('Todas'); // 'Todas', 'Pagado', 'No pagado'
+  const [filtroMesAnio, setFiltroMesAnio] = useState('Todos'); // 'Todos' o 'YYYY-MM'
 
   // Ordenar clases por fecha (más recientes primero)
   const clasesOrdenadas = useMemo(() => {
     return [...clasesDelAlumno].sort((a, b) => b.fecha.localeCompare(a.fecha));
   }, [clasesDelAlumno]);
 
+  // Obtener meses únicos con clases para el selector de fecha
+  const mesesConClases = useMemo(() => {
+    const meses = new Set();
+    clasesDelAlumno.forEach(clase => {
+      // Extraer 'YYYY-MM' de la fecha 'YYYY-MM-DD'
+      if (clase.fecha && clase.fecha.length >= 7) {
+        meses.add(clase.fecha.substring(0, 7));
+      }
+    });
+    // Convertir a array de objetos para el select, ordenado
+    return Array.from(meses).sort().reverse().map(mesAnio => {
+      const [year, month] = mesAnio.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      return {
+        value: mesAnio, // 'YYYY-MM'
+        label: formatFecha(date, { month: 'long', year: 'numeric' }) // 'Octubre 2024'
+      };
+    });
+  }, [clasesDelAlumno]);
+
+  // Aplicar filtros y ordenar clases
+  const clasesFiltradasYOrdenadas = useMemo(() => {
+    let clasesFiltradas = [...clasesDelAlumno];
+
+    // 1. Filtrar por estado de pago
+    if (filtroPago !== 'Todas') {
+      clasesFiltradas = clasesFiltradas.filter(clase => clase.estadoPago === filtroPago);
+    }
+
+    // 2. Filtrar por mes/año
+    if (filtroMesAnio !== 'Todos') {
+      clasesFiltradas = clasesFiltradas.filter(clase => clase.fecha && clase.fecha.startsWith(filtroMesAnio));
+    }
+
+    // 3. Ordenar por fecha (más recientes primero)
+    return clasesFiltradas.sort((a, b) => b.fecha.localeCompare(a.fecha));
+  }, [clasesDelAlumno, filtroPago, filtroMesAnio]);
+
   // Calcular estadísticas simples
   const stats = useMemo(() => {
-    const totalClases = clasesDelAlumno.length;
-    const clasesPagadas = clasesDelAlumno.filter(c => c.estadoPago === 'Pagado').length;
-    const clasesNoPagadas = totalClases - clasesPagadas;
-    // Podríamos calcular ingresos totales si tuviéramos el precio guardado
+    const totalClases = clasesOrdenadas.length; // Usar filtradas
+    const clasesPagadas = clasesOrdenadas.filter(c => c.estadoPago === 'Pagado').length;
+    const clasesNoPagadas = clasesOrdenadas.filter(c => c.estadoPago === 'No pagado').length;
     return { totalClases, clasesPagadas, clasesNoPagadas };
-  }, [clasesDelAlumno]);
+  }, [clasesFiltradasYOrdenadas]);
 
   const hoyYMD = toYYYYMMDD(new Date());
 
@@ -54,10 +94,10 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
                 </div>
               )}
               {alumno.nivel && (
-                 <div className="flex items-center gap-2 text-slate-700">
-                   <BookOpen size={14} className="text-slate-400" />
-                   <span>{alumno.nivel}</span>
-                 </div>
+                <div className="flex items-center gap-2 text-slate-700">
+                  <BookOpen size={14} className="text-slate-400" />
+                  <span>{alumno.nivel}</span>
+                </div>
               )}
             </div>
 
@@ -76,21 +116,51 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
                 <span className="font-semibold text-red-600">{stats.clasesNoPagadas}</span>
               </div>
             </div>
-             {alumno.notas && (
-                <div className="pt-4">
-                 <h4 className="text-sm font-semibold text-slate-600 mb-1">Notas Adicionales</h4>
-                 <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded border border-slate-200 whitespace-pre-wrap">{alumno.notas}</p>
-                </div>
-             )}
+            {alumno.notas && (
+              <div className="pt-4">
+                <h4 className="text-sm font-semibold text-slate-600 mb-1">Notas Adicionales</h4>
+                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded border border-slate-200 whitespace-pre-wrap">{alumno.notas}</p>
+              </div>
+            )}
           </div>
 
           {/* Columna Derecha: Historial de Clases */}
-          <div className="md:col-span-2 space-y-3">
-            <h4 className="text-sm font-semibold text-slate-600 mb-2">Historial de Clases Recientes</h4>
-            {clasesOrdenadas.length > 0 ? (
-              <div className="max-h-96 overflow-y-auto pr-2 space-y-3"> {/* Contenedor con scroll */}
-                {clasesOrdenadas.map(clase => (
+          <div className="md:col-span-2 space-y-3 flex flex-col"> {/* Añadido flex flex-col */}
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-sm font-semibold text-slate-600">Historial de Clases</h4>
+              {/* --- CONTROLES DE FILTRO --- */}
+              <div className="flex items-center gap-3">
+                {/* Filtro Mes/Año */}
+                <select
+                  value={filtroMesAnio}
+                  onChange={(e) => setFiltroMesAnio(e.target.value)}
+                  className="text-xs p-1 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="Todos">Todos los meses</option>
+                  {mesesConClases.map(mes => (
+                    <option key={mes.value} value={mes.value}>{mes.label}</option>
+                  ))}
+                </select>
+
+                {/* Filtro Pago */}
+                <select
+                  value={filtroPago}
+                  onChange={(e) => setFiltroPago(e.target.value)}
+                  className="text-xs p-1 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="Todas">Todas</option>
+                  <option value="Pagado">Pagadas</option>
+                  <option value="No pagado">No pagadas</option>
+                </select>
+                <Filter size={16} className="text-slate-400" />
+              </div>
+              {/* --- FIN CONTROLES --- */}
+            </div>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-3 border-t pt-3">
+              {clasesFiltradasYOrdenadas.length > 0 ? (
+                clasesFiltradasYOrdenadas.map(clase => (
                   <div key={clase.id} className={`p-3 rounded-lg border flex justify-between items-center ${clase.fecha === hoyYMD ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
+                    {/* ... (contenido de cada clase - sin cambios) ... */}
                     <div>
                       <p className="text-sm font-semibold text-slate-800">{clase.materia}</p>
                       <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
@@ -99,19 +169,17 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
                       </div>
                     </div>
                     <div className="text-right">
-                       {clase.estadoPago === 'Pagado'
-                         ? <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Pagado</span>
-                         : <span className="text-xs font-medium text-red-600 bg-red-100 px-2 py-0.5 rounded-full">No pagado</span>
-                       }
-                       {/* Podríamos añadir el ingreso calculado si lo tuviéramos */}
-                       {/* {clase.ingreso > 0 && <p className="text-xs text-slate-500 mt-1">{formatCurrency(clase.ingreso)}</p>} */}
+                      {clase.estadoPago === 'Pagado'
+                        ? <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">Pagado</span>
+                        : <span className="text-xs font-medium text-red-600 bg-red-100 px-2 py-0.5 rounded-full">No pagado</span>
+                      }
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-500 italic text-center py-4">No hay clases registradas para este alumno.</p>
-            )}
+                ))
+              ) : (
+                <p className="text-sm text-slate-500 italic text-center py-4">No hay clases que coincidan con los filtros seleccionados.</p>
+              )}
+            </div>
           </div>
         </div>
 
