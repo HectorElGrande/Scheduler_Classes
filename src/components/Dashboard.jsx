@@ -72,7 +72,8 @@ function StatCard({ title, value, icon, colorClass, borderClass }) {
             </div>
             <div>
                 <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">{title}</p>
-                <p className="text-3xl font-extrabold text-slate-800 mt-1">{value}</p>
+                {/* CAMBIO: Fuente más pequeña en 'sm', más grande en 'md' y superior */}
+                <p className="text-2xl md:text-3xl font-extrabold text-slate-800 mt-1">{value}</p>
             </div>
         </div>
     );
@@ -90,7 +91,10 @@ function GoalProgressCard({ hours, targetHours, monthName }) {
                 <h3 className="text-lg font-semibold text-slate-700">Progreso de Horas ({monthName})</h3>
                 <Target className="text-indigo-500" size={24} />
             </div>
-            <p className="text-4xl font-extrabold text-slate-800">{hours.toFixed(1)} h</p>
+            
+            {/* CAMBIO: Fuente más pequeña por defecto, más grande en 'lg' y superior */}
+            <p className="text-3xl lg:text-4xl font-extrabold text-slate-800">{hours.toFixed(1)} h</p>
+            
             {targetHours > 0 ? (
                 <>
                     <p className="text-sm text-slate-500 mt-1">de {targetHours} horas objetivo</p>
@@ -122,7 +126,10 @@ function AverageRateCard({ avgRate, officialRate }) {
                 <h3 className="text-lg font-semibold text-slate-700">Ingreso Promedio/Hora (Real)</h3>
                 <DollarSign className="text-teal-500" size={24} />
             </div>
-            <p className="text-4xl font-extrabold text-slate-800">{formatCurrency(avgRate)}</p>
+
+            {/* CAMBIO: Fuente más pequeña por defecto, más grande en 'lg' y superior */}
+            <p className="text-3xl lg:text-4xl font-extrabold text-slate-800">{formatCurrency(avgRate)}</p>
+            
             <p className="text-sm text-slate-500 mt-2">
                 Tasa oficial: {formatCurrency(officialRate)}
             </p>
@@ -276,7 +283,8 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
     // --- CÁLCULO DE ETIQUETAS DE FECHA DETALLADAS ---
     const semanaInicio = stats.inicioSemanaActual;
     const semanaFin = addDays(stats.inicioSemanaActual, 6);
-    const weekDateLabel = `${formatFecha(semanaInicio, { day: 'numeric', month: 'short' })} - ${formatFecha(semanaFin, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    // CAMBIO: Título de semana más corto para la tarjeta
+    const weekCardTitle = `${formatFecha(semanaInicio, { day: 'numeric', month: 'short' })} - ${formatFecha(semanaFin, { day: 'numeric', month: 'short' })}`;
     const monthDateLabel = formatFecha(fechaMostrada, { month: 'long', year: 'numeric' });
 
 
@@ -286,9 +294,9 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
 
             {/* CABECERA DE NAVEGACIÓN */}
             <div className="bg-white p-4 rounded-xl shadow-md border border-slate-200">
-                {/* En móvil, el título se puede hacer más pequeño y el flex se envuelve */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center"> 
-                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2 sm:mb-0">
+                {/* CAMBIO: Añadido 'flex-wrap' y 'gap-2' para que el selector de mes salte si no cabe */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center flex-wrap gap-2"> 
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">
                         Dashboard de Ingresos 📈
                     </h2>
                     <div className="flex items-center gap-4">
@@ -331,11 +339,12 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                 )}
 
                 {/* 1. Tarjetas de Estadísticas (Fila Superior - Responsive grid) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {/* CAMBIO: 'md:grid-cols-2 lg:grid-cols-3'. Añade un paso intermedio de 2 columnas en tablets. */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
 
                     {/* Tarjeta 1: Ingresos Semana */}
                     <StatCard
-                        title={`Ingresos Semana (${formatFecha(stats.inicioSemanaActual, { day: 'numeric', month: 'short' })})`}
+                        title={`Ingresos Semana (${weekCardTitle})`}
                         value={formatCurrency(stats.ingresosSemana)}
                         icon={<DollarSign size={24} className="text-indigo-600" />}
                         colorClass="bg-indigo-200"
@@ -362,89 +371,109 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                 </div>
 
                 {/* 2. CONTENIDO PRINCIPAL: Gráfico y Detalles (Stacking en móvil) */}
-                <div className="flex flex-col lg:flex-row gap-6">
-                    {/* IZQUIERDA (Gráfico Principal) - Ocupa 100% en móvil, 3/5 en escritorio */}
-                    <div className="w-full lg:w-3/5 bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                        <h3 className="text-xl font-bold text-slate-700 mb-6">
-                            Detalle de Ingresos Diarios en {monthName}
-                        </h3>
-                        {stats.chartData.length > 0 ? (
-                            <div style={{ width: '100%', height: 350 }}> 
-                                <ResponsiveContainer>
-                                    <BarChart data={stats.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                        <XAxis dataKey="name" fontSize={10} /> {/* Fuente más pequeña en eje X */}
-                                        <YAxis fontSize={10} tickFormatter={(value) => `€${Math.floor(value)}`} />
-                                        <Tooltip
-                                            cursor={{ fill: 'rgba(79, 70, 229, 0.1)' }}
-                                            formatter={(value) => [formatCurrency(value), 'Ingresos']}
-                                            labelFormatter={(label) => `Día ${label}`}
-                                        />
-                                        <Bar dataKey="Ingresos" fill="#4f46e5" radius={[6, 6, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        ) : (
-                            <p className="text-slate-500 text-center py-20">No hay datos de ingresos este mes.</p>
-                        )}
-                    </div>
+                {/* CAMBIO ESTRUCTURAL: 
+                  Este div es ahora 'flex-col' para apilar:
+                  1. La fila superior (Gráfico + 2 Tarjetas)
+                  2. La fila inferior (Productividad)
+                */}
+                <div className="flex flex-col gap-6"> 
+                
+                    {/* --- FILA SUPERIOR (Gráfico y 2 Tarjetas Laterales) --- */}
+                    {/* Este div interno mantiene la lógica de 'lg:flex-row' */}
+                    <div className="flex flex-col lg:flex-row gap-6">
 
-                    {/* DERECHA (Tarjetas Adicionales) - Ocupa 100% en móvil, 2/5 en escritorio */}
-                    <div className="w-full lg:w-2/5 flex flex-col gap-6">
-                        {/* Tarjeta: Progreso de Meta */}
-                        <GoalProgressCard
-                            hours={stats.horasMes}
-                            targetHours={stats.metaHorasMensual}
-                            monthName={monthName}
-                        />
-
-                        {/* Tarjeta: Tasa Promedio Real */}
-                        <AverageRateCard
-                            avgRate={stats.avgRateMes}
-                            officialRate={stats.precioHora}
-                        />
-
-                        {/* RESUMEN DE PRODUCTIVIDAD */}
-                        <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
-                            <h3 className="text-lg font-semibold text-slate-700 mb-4">
-                                <span className='mr-2 text-indigo-500'>🚀</span> Productividad Acumulada
+                        {/* IZQUIERDA (Gráfico Principal) - Ocupa 100% en móvil, 3/5 en escritorio */}
+                        <div className="w-full lg:w-3/5 bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                            <h3 className="text-xl font-bold text-slate-700 mb-6">
+                                Detalle de Ingresos Diarios en {monthName}
                             </h3>
-                            <div className="space-y-4">
-                                {/* Cabecera de la "tabla" */}
-                                <div className="grid grid-cols-3 text-sm font-medium text-slate-500 border-b pb-1">
-                                    <span>Periodo</span>
-                                    <span className="text-right">Horas</span>
-                                    <span className="text-right">Ingresos</span>
+                            {stats.chartData.length > 0 ? (
+                                // CAMBIO: Altura responsiva (más baja en móvil)
+                                <div className="w-full h-[250px] sm:h-[350px]"> 
+                                    <ResponsiveContainer>
+                                        <BarChart data={stats.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                            <XAxis dataKey="name" fontSize={10} /> {/* Fuente más pequeña en eje X */}
+                                            <YAxis fontSize={10} tickFormatter={(value) => `€${Math.floor(value)}`} />
+                                            <Tooltip
+                                                cursor={{ fill: 'rgba(79, 70, 229, 0.1)' }}
+                                                formatter={(value) => [formatCurrency(value), 'Ingresos']}
+                                                labelFormatter={(label) => `Día ${label}`}
+                                            />
+                                            <Bar dataKey="Ingresos" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
                                 </div>
+                            ) : (
+                                <p className="text-slate-500 text-center py-20">No hay datos de ingresos este mes.</p>
+                            )}
+                        </div>
 
-                                {/* Fila: Semana (Responsive: texto ajustado para evitar desbordes) */}
-                                <div className="grid grid-cols-3 items-center text-slate-800 pt-2">
-                                    <span className="font-medium text-xs sm:text-sm text-slate-600 whitespace-nowrap overflow-hidden text-ellipsis">
-                                        Semana ({formatFecha(semanaInicio, { day: 'numeric', month: 'short' })} - {formatFecha(semanaFin, { day: 'numeric', month: 'short' })})
-                                    </span>
-                                    <span className="text-right font-semibold text-blue-600">{stats.horasSemana.toFixed(1)} h</span>
-                                    <span className="text-right font-bold text-green-600 text-sm">{formatCurrency(stats.ingresosSemana)}</span>
-                                </div>
+                        {/* DERECHA (Tarjetas Adicionales) - Ocupa 100% en móvil, 2/5 en escritorio */}
+                        <div className="w-full lg:w-2/5 flex flex-col gap-6">
+                            {/* Tarjeta: Progreso de Meta */}
+                            <GoalProgressCard
+                                hours={stats.horasMes}
+                                targetHours={stats.metaHorasMensual}
+                                monthName={monthName}
+                            />
 
-                                {/* Fila: Mes */}
-                                <div className="grid grid-cols-3 items-center text-slate-800 border-t pt-2">
-                                    <span className="font-medium text-sm text-slate-600 whitespace-nowrap">
-                                        Este Mes ({monthDateLabel})
-                                    </span>
-                                    <span className="text-right font-semibold text-blue-600">{stats.horasMes.toFixed(1)} h</span>
-                                    <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosMes)}</span>
-                                </div>
+                            {/* Tarjeta: Tasa Promedio Real */}
+                            <AverageRateCard
+                                avgRate={stats.avgRateMes}
+                                officialRate={stats.precioHora}
+                            />
+                        </div>
+                    
+                    </div> 
+                    {/* --- FIN DE LA FILA SUPERIOR --- */}
 
-                                {/* Proyección Anual */}
-                                <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-dashed border-slate-200">
-                                    <span className="font-bold text-base flex items-center text-slate-700">
-                                        <TrendingUp size={18} className='text-orange-500 mr-2' /> Proyección Anual
-                                    </span>
-                                    <span className="font-extrabold text-xl text-indigo-700">{formatCurrency(stats.ingresosMes * 12)}</span>
-                                </div>
+
+                    {/* --- FILA INFERIOR (Productividad Acumulada) --- */}
+                    {/* Esta tarjeta se ha movido aquí para que ocupe el ancho completo por debajo */}
+                    <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                        <h3 className="text-lg font-semibold text-slate-700 mb-4">
+                            <span className='mr-2 text-indigo-500'>🚀</span> Productividad Acumulada
+                        </h3>
+                        <div className="space-y-4">
+                            {/* Cabecera de la "tabla" */}
+                            <div className="grid grid-cols-3 text-sm font-medium text-slate-500 border-b pb-1">
+                                <span>Periodo</span>
+                                <span className="text-right">Horas</span>
+                                <span className="text-right">Ingresos</span>
+                            </div>
+
+                            {/* Fila: Semana (Responsive: texto ajustado para evitar desbordes) */}
+                            <div className="grid grid-cols-3 items-center text-slate-800 pt-2">
+                                <span className="font-medium text-xs sm:text-sm text-slate-600 whitespace-nowrap overflow-hidden text-ellipsis">
+                                    Semana ({weekCardTitle})
+                                </span>
+                                <span className="text-right font-semibold text-blue-600">{stats.horasSemana.toFixed(1)} h</span>
+                                <span className="text-right font-bold text-green-600 text-sm">{formatCurrency(stats.ingresosSemana)}</span>
+                            </div>
+
+                            {/* Fila: Mes */}
+                            <div className="grid grid-cols-3 items-center text-slate-800 border-t pt-2">
+                                {/* CAMBIO: Añadido 'truncate' para evitar desbordes si 'monthDateLabel' es largo */}
+                                <span className="font-medium text-sm text-slate-600 truncate">
+                                    Este Mes ({monthDateLabel})
+                                </span>
+                                <span className="text-right font-semibold text-blue-600">{stats.horasMes.toFixed(1)} h</span>
+                                <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosMes)}</span>
+                            </div>
+
+                            {/* Proyección Anual */}
+                            <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-dashed border-slate-200">
+                                <span className="font-bold text-base flex items-center text-slate-700">
+                                    <TrendingUp size={18} className='text-orange-500 mr-2' /> Proyección Anual
+                                </span>
+                                {/* CAMBIO: fuente responsiva en el valor */}
+                                <span className="font-extrabold text-lg sm:text-xl text-indigo-700">{formatCurrency(stats.ingresosMes * 12)}</span>
                             </div>
                         </div>
                     </div>
+                    {/* --- FIN DE LA FILA INFERIOR --- */}
+
                 </div>
             </div>
         </div>

@@ -487,7 +487,7 @@ export default function App() {
       )}
 
       {/* Botón Flotante */}
-      {vista !== 'dashboard' && (
+      {vista !== 'dashboard' && vista !== 'morosos' && (
         <button
           onClick={() => { handleAddClaseClick(fechaActual); }}
           disabled={!!isLoading || !user || isDataLoading}
