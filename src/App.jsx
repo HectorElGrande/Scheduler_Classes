@@ -139,8 +139,19 @@ export default function App() {
 
 
   // --- FUNCIONES DE AUTENTICACIÓN Y PERFIL ---
-
-  const handleGoogleSignIn = async () => { /* ... */ };
+  const handleGoogleSignIn = async () => {
+    if (!auth) { console.error("Auth not initialized"); return; }
+    try {
+      console.log("Attempting Google Sign In...");
+      await signInWithPopup(auth, googleProvider);
+      console.log("Google Sign In successful (popup closed).");
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+      if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        alert(`Error al iniciar sesión: ${error.message}`);
+      }
+    }
+  }
 
   const handleEmailRegister = async (email, password, displayName) => {
     if (!auth) throw new Error("Auth no inicializado");
