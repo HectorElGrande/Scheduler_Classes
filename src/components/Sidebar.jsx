@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 // Corregir/Verificar rutas de importación
-import MiniCalendario from './MiniCalendario'; // Asume que está en src/components/
-import AlumnosLista from './AlumnosLista';   // Asume que está en src/components/
+import MiniCalendario from './MiniCalendario'; // Asume que está en la misma carpeta (components)
+import AlumnosLista from './AlumnosLista';   // Asume que está en la misma carpeta (components)
 import { toYYYYMMDD } from '../utils/dates'; // Asume que dates.js está en src/utils/
 import { DollarSign } from 'lucide-react';
 
@@ -34,21 +34,25 @@ export default function Sidebar({
 
   return (
     <aside className="w-72 bg-white border-r border-slate-200 p-6 flex flex-col h-screen relative z-20">
-      {/* --- CSS PERSONALIZADO PARA OCULTAR SCROLLBAR --- */}
-      <style jsx global>{`
+      
+      {/* --- CSS CORREGIDO PARA OCULTAR SCROLLBAR --- */}
+      {/* Usamos una etiqueta <style> estándar */}
+      <style>{`
         .hide-scrollbar::-webkit-scrollbar {
-          display: none; /* Webkit (Chrome, Safari, Edge) */
+          width: 0; /* Oculta barra en Chrome/Safari */
+          display: none;
         }
         .hide-scrollbar {
           -ms-overflow-style: none;  /* IE and Edge */
           scrollbar-width: none;  /* Firefox */
         }
       `}</style>
-      {/* --- FIN CSS --- */}
+      {/* --- FIN CSS CORREGIDO --- */}
 
       <MiniCalendario fechaActual={fechaActual || new Date()} setFechaActual={setFechaActual} clases={clases} />
 
       {/* Agenda de Hoy */}
+      {/* Aplicamos la clase 'hide-scrollbar' */}
       <div className="flex-1 space-y-4 overflow-y-auto pt-6 hide-scrollbar">
         <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">Agenda de Hoy</h3>
@@ -89,7 +93,7 @@ export default function Sidebar({
         ) : (<p className="text-sm text-slate-500 italic">No hay clases programadas para hoy.</p>)}
       </div>
 
-      {/* Lista de Alumnos (sin cambios) */}
+      {/* Lista de Alumnos */}
       <div className="pt-6 mt-6 border-t border-slate-200">
         <AlumnosLista
           alumnos={alumnos}
@@ -102,4 +106,3 @@ export default function Sidebar({
     </aside>
   );
 }
-

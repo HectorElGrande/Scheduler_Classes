@@ -1,112 +1,259 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react'; // <-- Añadir hooks necesarios
-import { ChevronLeft, ChevronRight, ChevronDown, LogOut, User, Edit2 } from 'lucide-react'; // <-- Añadir Edit2
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, ChevronDown, LogOut, User, BarChart3, Calendar, Settings } from 'lucide-react';
 import { formatFecha, addDays, getInicioSemana } from '../utils/dates';
 
-// <-- Añadir onOpenProfile como prop
-export default function CabeceraApp({ vista, setVista, fechaActual, setFechaActual, user, onLogout, onOpenProfile }) {
-    // --- LÓGICA DE FECHA (SIN CAMBIOS) ---
-    const safeFechaActual = (fechaActual instanceof Date && !isNaN(fechaActual)) ? fechaActual : new Date();
-    const hoy = new Date();
-    const handleVistaChange = (e) => { setVista(e.target.value); };
-    const irHoy = () => { setFechaActual(hoy); };
-    const irAnterior = () => { try { if (vista === 'mes') { setFechaActual(new Date(safeFechaActual.getFullYear(), safeFechaActual.getMonth() - 1, 1)); } else if (vista === 'semana') { setFechaActual(addDays(safeFechaActual, -7)); } else { setFechaActual(addDays(safeFechaActual, -1)); } } catch (e) { console.error("Error navigating back:", e); } };
-    const irSiguiente = () => { try { if (vista === 'mes') { setFechaActual(new Date(safeFechaActual.getFullYear(), safeFechaActual.getMonth() + 1, 1)); } else if (vista === 'semana') { setFechaActual(addDays(safeFechaActual, 7)); } else { setFechaActual(addDays(safeFechaActual, +1)); } } catch (e) { console.error("Error navigating next:", e); } };
-    const textoFecha = useMemo(() => { try { if (vista === 'mes') { return formatFecha(safeFechaActual, { month: 'long', year: 'numeric' }); } if (vista === 'semana') { const inicio = getInicioSemana(safeFechaActual); const fin = addDays(inicio, 6); if (inicio.getMonth() === fin.getMonth()) { return `${inicio.getDate()} - ${fin.getDate()} de ${formatFecha(inicio, { month: 'long', year: 'numeric' })}`; } return `${formatFecha(inicio, { day: 'numeric', month: 'short' })} - ${formatFecha(fin, { day: 'numeric', month: 'short', year: 'numeric' })}`; } if (vista === 'dia') { return formatFecha(safeFechaActual, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } } catch (e) { console.error("Error formatting header date:", e); return "Error"; } }, [safeFechaActual, vista]); // Use safe date
 
-    // --- LÓGICA DE DROPDOWN AÑADIDA ---
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const dropdownRef = useRef(null);
+// Opciones de VISTA
+const VISTA_CALENDARIO_OPTIONS = [
+  { value: 'dia', label: 'Día', icon: Calendar },
+  { value: 'semana', label: 'Semana', icon: Calendar },
+  { value: 'mes', label: 'Mes', icon: Calendar },
+];
+const VISTA_DASHBOARD_OPTION = { value: 'dashboard', label: 'Estadísticas', icon: BarChart3 };
 
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            // Cierra el menú si el clic fue fuera del div contenedor del dropdown
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsDropdownOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
-    // --- FIN LÓGICA DE DROPDOWN ---
+const VISTA_OPTIONS = [...VISTA_CALENDARIO_OPTIONS, VISTA_DASHBOARD_OPTION];
 
-    return (
-        <header className="bg-white border-b border-slate-200 p-4 flex justify-between items-center sticky top-0 z-20">
-            <div className="flex items-center gap-4">
-                <h2 className="text-xl font-semibold text-slate-800 hidden md:block capitalize">{textoFecha}</h2>
-                <div className="flex items-center gap-1">
-                    <button onClick={irAnterior} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"><ChevronLeft size={20} /></button>
-                    <button onClick={irSiguiente} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700"><ChevronRight size={20} /></button>
-                </div>
-                <button onClick={irHoy} className="text-sm font-medium text-slate-700 bg-white border border-slate-300 px-3 py-1.5 rounded-lg shadow-sm hover:bg-slate-50">Hoy</button>
+// Helper para obtener el nombre de la vista
+const getVistaLabel = (vista) => {
+  return VISTA_OPTIONS.find(o => o.value === vista)?.label || 'Calendario';
+};
+
+// Componente CabeceraApp MODIFICADO
+export default function CabeceraApp({ vista, setVista, fechaActual, setFechaActual, user, onLogout, onOpenProfile, onOpenDashboard }) { // <-- Agregamos onOpenDashboard
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Dropdown de VISTA (móvil)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const vistaDropdownRef = useRef(null);
+
+  // --- Lógica de Fecha/Navegación (Formatos de imagen) ---
+  const safeFechaActual = useMemo(() => (fechaActual instanceof Date && !isNaN(fechaActual) ? fechaActual : new Date()), [fechaActual]);
+
+  // Función de capitalización (mantenida como en el ejemplo anterior)
+  const capitalizeDateText = (text) => {
+      if (!text) return '';
+      return text.split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ')
+          .replace(/De /g, (match) => match); // Mantiene "De" tal cual
+  };
+
+  // Calcula y da formato al texto de la fecha según la vista
+  const textoFecha = useMemo(() => { 
+    try { 
+        if (vista === 'mes') { 
+            // Formato paco.png: "Octubre De 2025"
+            const formatted = formatFecha(safeFechaActual, { month: 'long', year: 'numeric' });
+            return capitalizeDateText(formatted); 
+        } 
+        if (vista === 'semana') { 
+            // Formato pepe.png: "27 Oct - 2 Nov 2025"
+            const inicio = getInicioSemana(safeFechaActual); 
+            const fin = addDays(inicio, 6); 
+            if (inicio.getMonth() === fin.getMonth()) { 
+                return `${inicio.getDate()} - ${fin.getDate()} de ${formatFecha(inicio, { month: 'long', year: 'numeric' })}`; 
+            } 
+            return `${formatFecha(inicio, { day: 'numeric', month: 'short' })} - ${formatFecha(fin, { day: 'numeric', month: 'short', year: 'numeric' })}`; 
+        } 
+        if (vista === 'dia') { 
+            // Formato imagen.png: "Martes, 28 De Octubre De 2025"
+            const formatted = formatFecha(safeFechaActual, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            return capitalizeDateText(formatted);
+        } 
+    } catch (e) { 
+        console.error("Error formatting header date:", e); 
+        return "Error"; 
+    } 
+    // Para Dashboard, el título lo gestionamos aparte
+    return getVistaLabel(vista); 
+  }, [safeFechaActual, vista]);
+
+  // Manejador de navegación (Conservado)
+  const handleNavegar = (direction) => {
+    if (vista === 'dashboard') return;
+    const newDate = new Date(safeFechaActual);
+    switch (vista) {
+      case 'dia':
+        newDate.setDate(newDate.getDate() + direction);
+        break;
+      case 'semana':
+        newDate.setDate(newDate.getDate() + direction * 7);
+        break;
+      case 'mes':
+        newDate.setMonth(newDate.getMonth() + direction);
+        break;
+      default:
+        return;
+    }
+    setFechaActual(newDate);
+  };
+
+  // Lógica para cerrar los menús al hacer clic fuera (Conservada)
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+      if (vistaDropdownRef.current && !vistaDropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+
+  // --- Renderizado del Componente ---
+  return (
+    <header className="bg-white shadow-md border-b border-slate-100 p-4 sticky top-0 z-30">
+      <div className="flex justify-between items-center max-w-7xl mx-auto">
+
+        {/* IZQUIERDA: Título/Logo */}
+        <div className="flex items-center space-x-2">
+          <h1 className="text-2xl font-extrabold text-indigo-700 tracking-tight">Scheduler Pro</h1>
+        </div>
+
+        {/* --- CENTRO: NAVEGACIÓN PRINCIPAL (Fecha y Vistas de Calendario) --- */}
+        <div className="flex items-center space-x-4 flex-grow justify-center">
+
+          {/* Bloque de Navegación de Fecha (Visible solo en calendario) */}
+          {vista !== 'dashboard' ? (
+            <div className="flex items-center space-x-2 mr-6">
+              {/* Botones de Navegación */}
+              <button
+                onClick={() => handleNavegar(-1)}
+                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition duration-150"
+                aria-label="Anterior"
+              >
+                <ChevronLeft size={20} />
+              </button>
+
+              {/* Título de Fecha Central */}
+              <button
+                onClick={() => setFechaActual(new Date())}
+                className="text-xl font-bold text-slate-800 px-3 py-1 rounded-lg hover:bg-slate-100 transition duration-150 whitespace-nowrap"
+                title="Volver a Hoy"
+              >
+                {textoFecha}
+              </button>
+
+              <button
+                onClick={() => handleNavegar(1)}
+                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition duration-150"
+                aria-label="Siguiente"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
-            <div className="flex items-center gap-4">
-                <div className="relative">
-                    <select
-                        value={vista}
-                        onChange={handleVistaChange}
-                        className="text-sm font-medium text-slate-700 bg-white border border-slate-300 pl-3 pr-8 py-1.5 rounded-lg shadow-sm hover:bg-slate-50 appearance-none"
-                    >
-                        <option value="mes">Mes</option>
-                        <option value="semana">Semana</option>
-                        <option value="dia">Día</option>
-                        {/* <option value="dashboard">Estadísticas</option> <-- Oculta si no está implementada */}
-                    </select>
-                    <ChevronDown size={18} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-                {user && (
-                    <div className="relative" ref={dropdownRef}>
-                        {/* Botón/Imagen de Perfil */}
-                        <button
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 hover:ring-2 hover:ring-indigo-500 hover:ring-offset-2 transition-shadow"
-                            title="Ver perfil / Cerrar sesión"
-                        >
-                            {user.photoURL ? (
-                                <img src={user.photoURL} alt="Perfil" className="w-full h-full rounded-full object-cover" />
-                            ) : (
-                                <User size={20} />
-                            )}
-                        </button>
+          ) : (
+            /* Título para Dashboard */
+            <h2 className="text-xl font-bold text-slate-800 px-3 py-1 mr-6">{getVistaLabel(vista)}</h2>
+          )}
 
-                        {/* Menú Desplegable */}
-                        {isDropdownOpen && (
-                            <div className="absolute top-12 right-0 w-56 bg-white rounded-lg shadow-xl border border-slate-200 z-50 origin-top-right animate-in fade-in zoom-in-95">
 
-                                {/* Info de usuario */}
-                                <div className="p-3 border-b border-slate-200">
-                                    <p className="text-sm font-semibold text-slate-800 truncate" title={user.displayName || 'Usuario'}>{user.displayName || 'Usuario'}</p>
-                                    <p className="text-xs text-slate-500 truncate" title={user.email || ''}>{user.email || ''}</p>
-                                </div>
-
-                                <div className="p-1">
-                                    {/* Opción Editar Perfil */}
-                                    <button
-                                        onClick={() => {
-                                            onOpenProfile(); // <-- Abre el modal
-                                            setIsDropdownOpen(false); // Cierra el dropdown
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-700 rounded-md hover:bg-slate-100"
-                                    >
-                                        <Edit2 size={16} />
-                                        Editar Perfil
-                                    </button>
-
-                                    {/* Opción Cerrar Sesión */}
-                                    <button
-                                        onClick={onLogout} // <-- Cierra la sesión
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 rounded-md hover:bg-red-50 hover:text-red-700"
-                                    >
-                                        <LogOut size={16} />
-                                        Cerrar Sesión
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
+          {/* Selector de Vistas de Calendario (Tabs en escritorio) */}
+          <div className="hidden sm:flex items-center space-x-2">
+            <div className="flex p-1 bg-slate-100 rounded-lg">
+                {VISTA_CALENDARIO_OPTIONS.map((option) => (
+                <button
+                    key={option.value}
+                    onClick={() => setVista(option.value)}
+                    // Solo se marca si la vista activa es de calendario
+                    className={`flex items-center px-3 py-1.5 mx-2 text-sm font-medium rounded-md transition duration-150 ${vista === option.value
+                        ? 'bg-white shadow text-indigo-700'
+                        : 'text-slate-600 hover:text-indigo-700 hover:bg-white'
+                    }`}
+                >
+                    {option.label}
+                </button>
+                ))}
             </div>
-        </header>
-    );
+          </div>
+          
+          {/* Selector de Vistas (Dropdown en móvil - Incluye Dashboard) */}
+          <div className="relative sm:hidden" ref={vistaDropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center justify-between px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg transition duration-150 w-32"
+            >
+              {VISTA_OPTIONS.find(o => o.value === vista)?.icon && React.createElement(VISTA_OPTIONS.find(o => o.value === vista).icon, { size: 16, className: "mr-1" })}
+              {getVistaLabel(vista)}
+              <ChevronDown size={14} className={`ml-2 transform ${isDropdownOpen ? 'rotate-180' : 'rotate-0'} transition-transform`} />
+            </button>
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-20">
+                {VISTA_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      setVista(option.value);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`flex items-center w-full px-4 py-2 text-left text-sm ${vista === option.value ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    <option.icon size={16} className="mr-2" />
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* --- DERECHA: Menú de Usuario (Incluye Estadísticas/Dashboard) --- */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="flex items-center space-x-2 p-1 bg-slate-100 rounded-full hover:bg-slate-200 transition duration-150"
+            aria-label="Menú de usuario"
+          >
+            <span className="hidden sm:inline text-sm font-medium text-slate-700 ml-2">{user.displayName || user.email}</span>
+            <div className="w-9 h-9 rounded-full overflow-hidden bg-indigo-500 flex items-center justify-center text-white">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="Perfil" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/36x36/6366f1/ffffff?text=U'; }} />
+              ) : (
+                <User size={20} />
+              )}
+            </div>
+          </button>
+
+          {isUserMenuOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-20">
+              <div className="p-3 border-b border-slate-100">
+                <p className="text-sm font-semibold text-slate-800 truncate">{user.displayName || 'Usuario'}</p>
+                <p className="text-xs text-slate-500 truncate">{user.email}</p>
+              </div>
+
+              {/* OPCIÓN 1: Estadísticas (Nuevo) */}
+              <button
+                onClick={() => { onOpenDashboard(); setIsUserMenuOpen(false); }}
+                className="flex items-center w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <BarChart3 size={16} className="mr-2 text-indigo-500" />
+                Estadísticas
+              </button>
+
+              {/* OPCIÓN 2: Editar Perfil (Movido hacia abajo) */}
+              <button
+                onClick={() => { onOpenProfile(); setIsUserMenuOpen(false); }}
+                className="flex items-center w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+              >
+                <Settings size={16} className="mr-2 text-slate-400" />
+                Editar Perfil
+              </button>
+
+              <button
+                onClick={() => { onLogout(); setIsUserMenuOpen(false); }}
+                className="flex items-center w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 border-t border-slate-100"
+              >
+                <LogOut size={16} className="mr-2" />
+                Cerrar Sesión
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
 }

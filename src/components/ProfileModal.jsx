@@ -1,8 +1,13 @@
 import React, { useState, useRef } from 'react';
-import { X, User, Mail, Edit2 } from 'lucide-react';
+import { X, User, Mail, DollarSign } from 'lucide-react'; // Añadimos DollarSign
 
-// Servicio de Avatares (DiceBear)
-const DICEBEAR_BASE_URL = "https://api.dicebear.com/9.x";
+const DICEBEAR_BASE_URL = "https://api.dicebear.com/8.x";
+
+// Generar un avatar único basado en el email del usuario (para el botón por defecto)
+const generateUserAvatar = (email) => {
+  const seed = email ? email.split('@')[0] : 'default-user';
+  return `${DICEBEAR_BASE_URL}/adventurer-neutral/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
+};
 
 // Generar URLs de avatares preseleccionados con diferentes estilos
 const PRESET_AVATARS = [
@@ -11,26 +16,24 @@ const PRESET_AVATARS = [
   `${DICEBEAR_BASE_URL}/fun-emoji/svg?seed=Profesor`,
   `${DICEBEAR_BASE_URL}/miniavs/svg?seed=Aula`,
   `${DICEBEAR_BASE_URL}/notionists/svg?seed=Agenda`,
-  `${DICEBEAR_BASE_URL}/dylan/svg?seed=Felix`, // Útil si queremos algo geométrico
-  `${DICEBEAR_BASE_URL}/micah/svg?facialHair=scruff`,
+  `${DICEBEAR_BASE_URL}/identicon/svg?seed=ID`,
+  `${DICEBEAR_BASE_URL}/rings/svg?seed=Anillos`,
   `${DICEBEAR_BASE_URL}/personas/svg?seed=Persona`,
 ];
 
-// Generar un avatar único basado en el email del usuario
-const generateUserAvatar = (email) => {
-  // Usamos el email (o el nombre) como "seed" para la coherencia
-  const seed = email ? email.split('@')[0] : 'default-user';
-  return `${DICEBEAR_BASE_URL}/adventurer-neutral/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9`;
-};
 
-
-export default function ProfileModal({ user, onClose, onSaveProfile }) {
+// Recibe 'userProfile' como prop (con los datos de Firestore)
+export default function ProfileModal({ user, userProfile, onClose, onSaveProfile }) {
   if (!user) return null;
+
+  // Valor por defecto si userProfile es null
+  const initialPrecioHora = userProfile?.precioHora || 0;
 
   const initialPreview = user.photoURL || generateUserAvatar(user.email);
   const [nombre, setNombre] = useState(user.displayName || '');
+  const [precioHora, setPrecioHora] = useState(initialPrecioHora); // <-- AÑADIDO
 
-  // fotoFile (URL o null si no se ha cambiado)
+  // fotoFile guarda la URL si fue seleccionada, o null
   const [fotoFile, setFotoFile] = useState(null);
   const [fotoPreview, setFotoPreview] = useState(initialPreview);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,21 +42,19 @@ export default function ProfileModal({ user, onClose, onSaveProfile }) {
   // --- Lógica de Selección de Avatar ---
   const handleAvatarSelect = (url) => {
     setFotoPreview(url);
-    // Guardamos la URL seleccionada
     setFotoFile(url);
   };
-  // --- Fin Lógica de Selección ---
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // fotoFile es la nueva URL seleccionada (o null si no se tocó)
-      // Si fotoFile es null, pasamos la URL de la vista previa (que es la antigua o la generada por defecto)
       const urlToSave = fotoFile || fotoPreview;
+      const honorarios = parseFloat(precioHora) || 0; // Aseguramos que sea un número
 
-      await onSaveProfile(urlToSave, nombre); // onSaveProfile debe aceptar esta URL
+      // Pasa la URL y el nombre AL CONTRARIO (fotoFileOrUrl, nuevoNombre, nuevoPrecioHora)
+      await onSaveProfile(urlToSave, nombre, honorarios);
       onClose();
     } catch (error) {
       console.error("Error al guardar perfil:", error);
@@ -83,7 +84,7 @@ export default function ProfileModal({ user, onClose, onSaveProfile }) {
             </div>
           </div>
 
-          {/* --- GALERÍA DE AVATARES --- */}
+          {/* GALERÍA DE AVATARES (sin cambios) */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Seleccionar Avatar:</label>
             <div className="flex flex-wrap gap-2 justify-center p-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -110,7 +111,7 @@ export default function ProfileModal({ user, onClose, onSaveProfile }) {
               ))}
             </div>
           </div>
-          {/* --- FIN GALERÍA --- */}
+          {/* FIN GALERÍA */}
 
           <div>
             <label htmlFor="nombre" className="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
@@ -125,6 +126,25 @@ export default function ProfileModal({ user, onClose, onSaveProfile }) {
               />
             </div>
           </div>
+
+          {/* --- CAMPO PRECIO/HORA AÑADIDO --- */}
+          <div>
+            <label htmlFor="precioHora" className="block text-sm font-medium text-slate-700 mb-1">Honorarios por Hora (€)</label>
+            <div className="relative">
+              <DollarSign size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="number"
+                id="precioHora"
+                name="precioHora"
+                value={precioHora}
+                onChange={(e) => setPrecioHora(e.target.value)}
+                min="0"
+                step="0.01"
+                className="w-full p-2 pl-10 border border-slate-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              />
+            </div>
+          </div>
+          {/* --- FIN CAMPO AÑADIDO --- */}
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
