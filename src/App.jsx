@@ -404,7 +404,13 @@ export default function App() {
             case 'mes':
             default:
                 // VistaMes necesita onAddClase, que App.jsx provee
-                return <VistaMes fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} onAddClase={handleAddClaseClick} />;
+                return <VistaMes 
+                fechaActual={safeDate} 
+                clases={readyClases} 
+                onSelectClase={setClaseSeleccionada} 
+                onAddClase={handleAddClaseClick} 
+                setVista={setVista} // <-- Prop añadido
+                setFechaActual={setFechaActual}/>;
         }
     };
 

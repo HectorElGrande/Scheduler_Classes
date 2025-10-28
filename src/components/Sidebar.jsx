@@ -39,7 +39,18 @@ export default function Sidebar({
 
       {/* Agenda de Hoy */}
       <div className="flex-1 space-y-4 overflow-y-auto pt-6">
-        <h3 className="text-sm font-semibold text-slate-700">Agenda de Hoy</h3>
+        {/* --- TÍTULO MODIFICADO --- */}
+        <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">Agenda de Hoy</h3>
+            {/* Badge con el número de clases */}
+            {clasesHoy.length > 0 && (
+                <span className="bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    {clasesHoy.length} clase{clasesHoy.length !== 1 ? 's' : ''}
+                </span>
+            )}
+        </div>
+        {/* --- FIN TÍTULO --- */}
+
         {clasesHoy.length > 0 ? (
           <div className="space-y-3">
             {clasesHoy.map(clase => (
@@ -58,7 +69,8 @@ export default function Sidebar({
                       >
                         <DollarSign size={12} />
                         {savingClassId === clase.id ? '...' : ''}
-                        Marcar pagado
+                        {/* Texto opcional del botón, puedes quitarlo si prefieres solo icono */}
+                        {/* Marcar pagado */}
                       </button>
                     )}
                   </div>
