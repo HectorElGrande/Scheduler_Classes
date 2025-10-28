@@ -185,41 +185,38 @@ export default function App() {
             console.log("Sign Out successful.");
         } catch (error) { console.error("Error signing out:", error); alert(`Error al cerrar sesión: ${error.message}`); }
     };
-    const handleSaveProfile = async (fotoFile, nuevoNombre) => {
-        if (!user) {
-            console.error("No hay usuario para actualizar el perfil.");
-            return;
-        }
-        let fotoURL = user.photoURL; // Usa la foto existente por defecto
-        if (fotoFile) {
-            console.log("Subiendo nueva foto de perfil...");
-            const storageRef = ref(storage, `profiles/${user.uid}/profile-pic`);
-            try {
-                const snapshot = await uploadBytes(storageRef, fotoFile);
-                fotoURL = await getDownloadURL(snapshot.ref); // Obtiene la nueva URL
-                console.log("Foto subida, URL:", fotoURL);
-            } catch (error) {
-                console.error("Error al subir la foto:", error);
-                throw new Error("No se pudo subir la foto de perfil.");
-            }
-        }
-        try {
-            await updateProfile(auth.currentUser, {
-                displayName: nuevoNombre,
-                photoURL: fotoURL // Sea la nueva URL o la que ya tenía
-            });
-            setUser(prevUser => ({
-                ...prevUser,
-                displayName: nuevoNombre,
-                photoURL: fotoURL
-            }));
-            console.log("Perfil de Firebase actualizado.");
-            setIsProfileModalOpen(false); // Cierra el modal
-        } catch (error) {
-            console.error("Error al actualizar el perfil de Firebase:", error);
-            throw new Error("No se pudo guardar la información del perfil.");
-        }
-    };
+    const handleSaveProfile = async (fotoFileOrUrl, nuevoNombre) => {
+    if (!user || !auth.currentUser) { console.error("Usuario no disponible para guardar perfil."); return; }
+
+    let photoURLToSave = user.photoURL; // Mantener foto actual por defecto
+
+    // Si la entrada es una URL (avatar preseleccionado), usarla directamente.
+    if (typeof fotoFileOrUrl === 'string' && fotoFileOrUrl) {
+      photoURLToSave = fotoFileOrUrl;
+    }
+    // Si fotoFileOrUrl es null o undefined, mantenemos photoURLToSave (que es user.photoURL)
+
+    try {
+      // 1. Actualizar el perfil de autenticación de Firebase
+      await updateProfile(auth.currentUser, {
+        displayName: nuevoNombre,
+        photoURL: photoURLToSave // Se pasa la URL o la URL antigua
+      });
+
+      // 2. Actualizar el estado local 'user'
+      setUser(prevUser => ({
+        ...prevUser,
+        displayName: nuevoNombre,
+        photoURL: photoURLToSave
+      }));
+
+      console.log("Perfil de Firebase actualizado.");
+      setIsProfileModalOpen(false);
+    } catch (error) {
+      console.error("Error al actualizar el perfil de Firebase:", error);
+      throw new Error("No se pudo guardar la información del perfil.");
+    }
+  };
 
     // --- FUNCIONES CRUD PARA ALUMNOS ---
 
