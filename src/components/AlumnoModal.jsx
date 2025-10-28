@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, Mail, BookOpen, FileText } from 'lucide-react';
+import { X, User, Phone, Mail, BookOpen, FileText, Plus, Hash } from 'lucide-react';
 
 export default function AlumnoModal({ alumno, onClose, onSave, isLoading, onDelete }) {
-  // Estado inicial: si 'alumno' existe, lo usamos; si no, objeto vacío
-  const [formData, setFormData] = useState({
+  
+  // --- MODIFICADO: Estado inicial con materias ---
+  const getInitialData = () => ({
     nombre: '',
     contactoTelefono: '',
     contactoEmail: '',
     nivelCurso: '',
     notas: '',
-    ...alumno // Sobrescribe los campos vacíos si 'alumno' tiene datos
+    materias: [], // <-- NUEVO: Array para las materias
+    ...(alumno || {}) // Sobrescribe si 'alumno' tiene datos
   });
-  const [error, setError] = useState('');
 
-  // Sincronizar si el prop 'alumno' cambia (poco probable, pero seguro)
+  const [formData, setFormData] = useState(getInitialData());
+  const [error, setError] = useState('');
+  
+  // --- NUEVO: Estado para la nueva materia a añadir ---
+  const [nuevaMateria, setNuevaMateria] = useState('');
+
+  // Sincronizar si el prop 'alumno' cambia
   useEffect(() => {
-    setFormData({
-      nombre: '',
-      contactoTelefono: '',
-      contactoEmail: '',
-      nivelCurso: '',
-      notas: '',
-      ...(alumno || {}) // Usar objeto vacío si alumno es null/undefined
-    });
+    setFormData(getInitialData());
   }, [alumno]);
 
 
@@ -42,7 +42,27 @@ export default function AlumnoModal({ alumno, onClose, onSave, isLoading, onDele
       setError('El nombre del alumno es obligatorio.');
       return;
     }
-    onSave(formData); // Pasamos el objeto completo
+    // El onSave ya envía el formData completo, que ahora incluye el array 'materias'
+    onSave(formData);
+  };
+
+  // --- NUEVO: Función para añadir una materia a la lista ---
+  const handleAddMateria = () => {
+    if (nuevaMateria.trim() && !formData.materias.includes(nuevaMateria.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        materias: [...prev.materias, nuevaMateria.trim()]
+      }));
+      setNuevaMateria(''); // Limpiar el input
+    }
+  };
+
+  // --- NUEVO: Función para eliminar una materia de la lista ---
+  const handleRemoveMateria = (materiaToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      materias: prev.materias.filter(m => m !== materiaToRemove)
+    }));
   };
 
   const esEdicion = !!(alumno && alumno.id);
@@ -55,6 +75,7 @@ export default function AlumnoModal({ alumno, onClose, onSave, isLoading, onDele
           <button type="button" onClick={onClose} className="p-1 text-slate-500 hover:text-slate-800 rounded-full hover:bg-slate-100"><X size={22} /></button>
         </div>
 
+        {/* --- MODIFICADO: Contenedor con scroll --- */}
         <div className="p-6 space-y-4 overflow-y-auto">
           {/* Nombre */}
           <div>
@@ -92,6 +113,55 @@ export default function AlumnoModal({ alumno, onClose, onSave, isLoading, onDele
             </div>
           </div>
 
+          {/* --- NUEVO: Sección para gestionar Materias --- */}
+          <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
+            <label htmlFor="nuevaMateria" className={commonLabelClass}>Materias del Alumno</label>
+            <div className="flex gap-2 mb-2">
+              <div className="relative flex-grow">
+                <Hash size={18} className={commonIconClass} />
+                <input
+                  type="text"
+                  id="nuevaMateria"
+                  name="nuevaMateria"
+                  value={nuevaMateria}
+                  onChange={(e) => setNuevaMateria(e.target.value)}
+                  className={commonInputClass}
+                  placeholder="Ej: Matemáticas"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddMateria}
+                className="flex-shrink-0 text-sm font-medium text-indigo-700 bg-indigo-100 px-3 py-2 rounded-lg shadow-sm hover:bg-indigo-200"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            {/* Lista de materias añadidas */}
+            {formData.materias.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {formData.materias.map((materia, index) => (
+                  <span key={index} className="flex items-center gap-1.5 bg-indigo-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                    {materia}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMateria(materia)}
+                      className="text-indigo-200 hover:text-white"
+                      title={`Eliminar ${materia}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {formData.materias.length === 0 && (
+              <p className="text-xs text-slate-500 italic text-center py-1">Añade materias que curse este alumno.</p>
+            )}
+          </div>
+          {/* --- FIN NUEVO --- */}
+
+
           {/* Notas */}
           <div>
             <label htmlFor="notas" className={commonLabelClass}>Notas sobre el alumno</label>
@@ -106,7 +176,7 @@ export default function AlumnoModal({ alumno, onClose, onSave, isLoading, onDele
 
         <div className="flex justify-between items-center p-5 border-t border-slate-200 bg-slate-50 rounded-b-xl">
           <div>
-            {esEdicion && onDelete && ( // Mostrar botón solo si es edición y se pasa la función onDelete
+            {esEdicion && onDelete && (
               <button
                 type="button"
                 onClick={() => {

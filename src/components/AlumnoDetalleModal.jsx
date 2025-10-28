@@ -1,63 +1,50 @@
 import React, { useState, useMemo } from 'react';
-import { X, User, Phone, Mail, BookOpen, Calendar, Clock, Filter } from 'lucide-react';
-import { formatFecha, toYYYYMMDD } from '../utils/dates'; // Importar toYYYYMMDD
+import { X, User, Phone, Mail, BookOpen, Calendar, Clock, Filter, Hash } from 'lucide-react'; // <-- Añadir Hash
+import { formatFecha, toYYYYMMDD } from '../utils/dates';
 
 export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose }) {
   if (!alumno) return null;
 
-  const [filtroPago, setFiltroPago] = useState('Todas'); // 'Todas', 'Pagado', 'No pagado'
-  const [filtroMesAnio, setFiltroMesAnio] = useState('Todos'); // 'Todos' o 'YYYY-MM'
-
-  // Ordenar clases por fecha (más recientes primero)
+  const [filtroPago, setFiltroPago] = useState('Todas');
+  const [filtroMesAnio, setFiltroMesAnio] = useState('Todos'); 
+  
+  // ... (useMemos de clases y filtros sin cambios) ...
   const clasesOrdenadas = useMemo(() => {
     return [...clasesDelAlumno].sort((a, b) => b.fecha.localeCompare(a.fecha));
   }, [clasesDelAlumno]);
-
-  // Obtener meses únicos con clases para el selector de fecha
   const mesesConClases = useMemo(() => {
     const meses = new Set();
     clasesDelAlumno.forEach(clase => {
-      // Extraer 'YYYY-MM' de la fecha 'YYYY-MM-DD'
       if (clase.fecha && clase.fecha.length >= 7) {
         meses.add(clase.fecha.substring(0, 7));
       }
     });
-    // Convertir a array de objetos para el select, ordenado
     return Array.from(meses).sort().reverse().map(mesAnio => {
       const [year, month] = mesAnio.split('-');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
       return {
-        value: mesAnio, // 'YYYY-MM'
-        label: formatFecha(date, { month: 'long', year: 'numeric' }) // 'Octubre 2024'
+        value: mesAnio,
+        label: formatFecha(date, { month: 'long', year: 'numeric' })
       };
     });
   }, [clasesDelAlumno]);
-
-  // Aplicar filtros y ordenar clases
   const clasesFiltradasYOrdenadas = useMemo(() => {
     let clasesFiltradas = [...clasesDelAlumno];
-
-    // 1. Filtrar por estado de pago
     if (filtroPago !== 'Todas') {
       clasesFiltradas = clasesFiltradas.filter(clase => clase.estadoPago === filtroPago);
     }
-
-    // 2. Filtrar por mes/año
     if (filtroMesAnio !== 'Todos') {
       clasesFiltradas = clasesFiltradas.filter(clase => clase.fecha && clase.fecha.startsWith(filtroMesAnio));
     }
-
-    // 3. Ordenar por fecha (más recientes primero)
     return clasesFiltradas.sort((a, b) => b.fecha.localeCompare(a.fecha));
   }, [clasesDelAlumno, filtroPago, filtroMesAnio]);
-
-  // Calcular estadísticas simples
   const stats = useMemo(() => {
-    const totalClases = clasesOrdenadas.length; // Usar filtradas
-    const clasesPagadas = clasesOrdenadas.filter(c => c.estadoPago === 'Pagado').length;
-    const clasesNoPagadas = clasesOrdenadas.filter(c => c.estadoPago === 'No pagado').length;
+    const totalClases = clasesFiltradasYOrdenadas.length; // <-- CORREGIDO: Usar filtradas
+    const clasesPagadas = clasesFiltradasYOrdenadas.filter(c => c.estadoPago === 'Pagado').length;
+    const clasesNoPagadas = clasesFiltradasYOrdenadas.filter(c => c.estadoPago === 'No pagado').length;
     return { totalClases, clasesPagadas, clasesNoPagadas };
-  }, [clasesFiltradasYOrdenadas]);
+  }, [clasesFiltradasYOrdenadas]); // <-- CORREGIDO: Depender de filtradas
+
 
   const hoyYMD = toYYYYMMDD(new Date());
 
@@ -81,6 +68,7 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
           <div className="md:col-span-1 space-y-4">
             <h4 className="text-sm font-semibold text-slate-600 mb-2">Información de Contacto</h4>
             <div className="space-y-2 text-sm">
+              {/* ... (Teléfono, Email, Nivel sin cambios) ... */}
               {alumno.telefono && (
                 <div className="flex items-center gap-2 text-slate-700">
                   <Phone size={14} className="text-slate-400" />
@@ -93,26 +81,44 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
                   <span>{alumno.email}</span>
                 </div>
               )}
-              {alumno.nivel && (
+              {alumno.nivelCurso && ( // <-- MODIFICADO: Usar nivelCurso
                 <div className="flex items-center gap-2 text-slate-700">
                   <BookOpen size={14} className="text-slate-400" />
-                  <span>{alumno.nivel}</span>
+                  <span>{alumno.nivelCurso}</span>
                 </div>
               )}
             </div>
 
-            <h4 className="text-sm font-semibold text-slate-600 pt-4 mb-2">Resumen</h4>
+            {/* --- NUEVO: Sección de Materias --- */}
+            {alumno.materias && alumno.materias.length > 0 && (
+              <div className="pt-4">
+                <h4 className="text-sm font-semibold text-slate-600 mb-2">Materias</h4>
+                <div className="flex flex-wrap gap-2">
+                  {alumno.materias.map((materia, index) => (
+                    <span key={index} className="flex items-center gap-1.5 bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                      <Hash size={12} />
+                      {materia}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* --- FIN NUEVO --- */}
+
+
+            <h4 className="text-sm font-semibold text-slate-600 pt-4 mb-2">Resumen (Filtrado)</h4>
             <div className="space-y-2 text-sm">
+              {/* ... (Estadísticas sin cambios) ... */}
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Clases Totales:</span>
+                <span className="text-slate-500">Clases (Filtro):</span>
                 <span className="font-semibold text-slate-700">{stats.totalClases}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Clases Pagadas:</span>
+                <span className="text-slate-500">Pagadas (Filtro):</span>
                 <span className="font-semibold text-green-600">{stats.clasesPagadas}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Clases No Pagadas:</span>
+                <span className="text-slate-500">No Pagadas (Filtro):</span>
                 <span className="font-semibold text-red-600">{stats.clasesNoPagadas}</span>
               </div>
             </div>
@@ -125,12 +131,11 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
           </div>
 
           {/* Columna Derecha: Historial de Clases */}
-          <div className="md:col-span-2 space-y-3 flex flex-col"> {/* Añadido flex flex-col */}
+          <div className="md:col-span-2 space-y-3 flex flex-col">
+            {/* ... (Filtros y lista de clases sin cambios) ... */}
             <div className="flex justify-between items-center mb-2">
               <h4 className="text-sm font-semibold text-slate-600">Historial de Clases</h4>
-              {/* --- CONTROLES DE FILTRO --- */}
               <div className="flex items-center gap-3">
-                {/* Filtro Mes/Año */}
                 <select
                   value={filtroMesAnio}
                   onChange={(e) => setFiltroMesAnio(e.target.value)}
@@ -141,8 +146,6 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
                     <option key={mes.value} value={mes.value}>{mes.label}</option>
                   ))}
                 </select>
-
-                {/* Filtro Pago */}
                 <select
                   value={filtroPago}
                   onChange={(e) => setFiltroPago(e.target.value)}
@@ -154,13 +157,11 @@ export default function AlumnoDetalleModal({ alumno, clasesDelAlumno, onClose })
                 </select>
                 <Filter size={16} className="text-slate-400" />
               </div>
-              {/* --- FIN CONTROLES --- */}
             </div>
             <div className="flex-1 overflow-y-auto pr-2 space-y-3 border-t pt-3">
               {clasesFiltradasYOrdenadas.length > 0 ? (
                 clasesFiltradasYOrdenadas.map(clase => (
                   <div key={clase.id} className={`p-3 rounded-lg border flex justify-between items-center ${clase.fecha === hoyYMD ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200'}`}>
-                    {/* ... (contenido de cada clase - sin cambios) ... */}
                     <div>
                       <p className="text-sm font-semibold text-slate-800">{clase.materia}</p>
                       <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
