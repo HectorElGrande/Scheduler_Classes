@@ -38,3 +38,24 @@ export const calcularDuracionEnHoras = (inicio, fin) => {
     return duracionEnMinutos / 60;
   } catch { return 0; }
 };
+
+export const calcularMontoDeuda = (duracionHoras, tarifaBase) => {
+    if (duracionHoras <= 0 || tarifaBase <= 0) {
+        return 0;
+    }
+
+    const duracionMinutos = duracionHoras * 60;
+    const primeraHora = 60;
+    const suplementoPorMinuto = 5 / 30; // 5€ por cada 30 minutos (0.1666... €/min)
+
+    if (duracionMinutos <= primeraHora) {
+        return tarifaBase; // Si es 1h o menos, solo se cobra la tarifa base
+    }
+
+    // Cálculo del suplemento
+    const minutosExtras = duracionMinutos - primeraHora;
+    const tramosDe30Minutos = Math.ceil(minutosExtras / 30); // 1.1h extra -> 2 tramos de 30 min
+    const costoSuplemento = tramosDe30Minutos * 5;
+
+    return tarifaBase + costoSuplemento;
+};

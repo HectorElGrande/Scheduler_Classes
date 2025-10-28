@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, LogOut, User, BarChart3, Calendar, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, LogOut, User, BarChart3, Calendar, Settings, Skull } from 'lucide-react';
 import { formatFecha, addDays, getInicioSemana } from '../utils/dates';
 
 
@@ -19,7 +19,7 @@ const getVistaLabel = (vista) => {
 };
 
 // Componente CabeceraApp MODIFICADO
-export default function CabeceraApp({ vista, setVista, fechaActual, setFechaActual, user, onLogout, onOpenProfile, onOpenDashboard }) { // <-- Agregamos onOpenDashboard
+export default function CabeceraApp({ vista, setVista, fechaActual, setFechaActual, user, onLogout, onOpenProfile, onOpenDashboard, onOpenMorosos }) { // <-- Agregamos onOpenDashboard
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Dropdown de VISTA (móvil)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -230,16 +230,25 @@ export default function CabeceraApp({ vista, setVista, fechaActual, setFechaActu
                 onClick={() => { onOpenDashboard(); setIsUserMenuOpen(false); }}
                 className="flex items-center w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
               >
-                <BarChart3 size={16} className="mr-2 text-indigo-500" />
+                <BarChart3 size={17} className="mr-2 text-indigo-500" />
                 Estadísticas
               </button>
 
-              {/* OPCIÓN 2: Editar Perfil (Movido hacia abajo) */}
+              {/* OPCIÓN 2: Morosos (Nuevo) */}
+              <button
+                onClick={() => { onOpenMorosos(); setIsUserMenuOpen(false); }}
+                className="flex items-center w-full px-4 py-2 text-left text-sm text-red-700 hover:bg-slate-50"
+              >
+                <Skull size={17} className="mr-2"/>
+                Morosos
+              </button>
+
+              {/* OPCIÓN 3: Editar Perfil (Movido hacia abajo) */}
               <button
                 onClick={() => { onOpenProfile(); setIsUserMenuOpen(false); }}
                 className="flex items-center w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
               >
-                <Settings size={16} className="mr-2 text-slate-400" />
+                <Settings size={17} className="mr-2 text-slate-400" />
                 Editar Perfil
               </button>
 
@@ -247,7 +256,7 @@ export default function CabeceraApp({ vista, setVista, fechaActual, setFechaActu
                 onClick={() => { onLogout(); setIsUserMenuOpen(false); }}
                 className="flex items-center w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 border-t border-slate-100"
               >
-                <LogOut size={16} className="mr-2" />
+                <LogOut size={17} className="mr-2" />
                 Cerrar Sesión
               </button>
             </div>

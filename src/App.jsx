@@ -32,7 +32,8 @@ import DetalleClaseModal from './components/DetalleClaseModal'; // <-- CORREGIDO
 import AuthScreen from './components/AuthScreen'; // <-- CORREGIDO
 import ProfileModal from './components/ProfileModal'; // <-- CORREGIDO
 import AlumnoDetalleModal from './components/AlumnoDetalleModal'; // <-- CORREGIDO
-import Dashboard from './components/Dashboard'; // <-- CORREGIDO
+import Dashboard from './components/Dashboard';// <-- CORREGIDO
+import Morosos from './components/CuentasPorCobrar';
 
 
 // --- Componente Principal de la Aplicación ---
@@ -380,6 +381,13 @@ export default function App() {
           userProfile={userProfile}
           fechaActual={safeDate}
         />;
+      case 'morosos':
+        return <Morosos
+          clases={readyClases}
+          alumnos={alumnos || []}
+          userProfile={userProfile}
+          onSaveClase={handleSaveClase}
+        />;
       case 'mes':
       default:
         return <VistaMes
@@ -431,6 +439,7 @@ export default function App() {
           onLogout={handleLogout}
           onOpenProfile={() => setIsProfileModalOpen(true)}
           onOpenDashboard={() => setVista('dashboard')}
+          onOpenMorosos={() => setVista('morosos')}
         />
         <div className="flex-1 flex flex-col overflow-auto">
           {vista !== 'dashboard' && <CabeceraSemana fechaActual={fechaActual || new Date()} vista={vista} />}
