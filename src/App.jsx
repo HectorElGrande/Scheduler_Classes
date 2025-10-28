@@ -245,7 +245,6 @@ export default function App() {
       await setDoc(docRef, alumnoData);
       return { ...alumnoData, id: id };
     } catch (error) {
-      console.error("Error al actualizar alumno:", error);
       alert(`Error al actualizar el alumno: ${error.message}`);
       throw error;
     }
@@ -257,12 +256,7 @@ export default function App() {
     const q = query(clasesRef, where("alumno", "==", alumnoNombre));
     try {
       const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        alert(`No se puede eliminar a este alumno porque tiene ${querySnapshot.size} clase(s) asociada(s). Elimina o reasigna primero sus clases.`);
-        return;
-      }
     } catch (error) {
-      console.error("Error al comprobar clases asociadas:", error);
       alert("Error al verificar si el alumno tiene clases. Inténtalo de nuevo.");
       return;
     }
@@ -270,7 +264,6 @@ export default function App() {
     try {
       await deleteDoc(docRef);
     } catch (error) {
-      console.error("Error al eliminar alumno:", error);
       alert(`Error al eliminar el alumno: ${error.message}`);
       throw error;
     }

@@ -38,13 +38,13 @@ export default function VistaMes({ fechaActual, clases, onSelectClase, onAddClas
                     <div key={fechaYMD} className={`relative p-2 border-t border-l border-slate-200 ${esMesActual ? 'bg-white' : 'bg-slate-50'} overflow-hidden flex flex-col cursor-pointer hover:bg-slate-100 transition-colors`} onClick={() => onAddClase(dia)}>
 
                         {/* Indicador número de día */}
-                        <span className={`mb-1 text-xs font-medium ${esHoy ? 'bg-indigo-600 text-white rounded-full w-5 h-5 flex items-center justify-center' : esMesActual ? 'text-slate-700' : 'text-slate-400'}`}>
+                        <span className={`mb-1 text-m font-medium ${esHoy ? 'bg-indigo-600 text-white rounded-full w-7 h-7 flex items-center justify-center' : esMesActual ? 'text-slate-700' : 'text-slate-400'}`}>
                             {dia.getDate()}
                         </span>
 
                         {/* Burbuja contador */}
                         {esMesActual && numClases > 0 && (
-                            <span className="absolute top-1 right-1 bg-blue-100 text-blue-700 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center justify-center whitespace-nowrap">
+                            <span className="absolute top-1 right-1 bg-blue-100 text-blue-700 text-[12px] font-semibold px-1.5 py-0.5 rounded-full flex items-center justify-center whitespace-nowrap">
                                 {numClases} clase{numClases > 1 ? 's' : ''}
                             </span>
                         )}
