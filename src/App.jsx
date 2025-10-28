@@ -14,10 +14,9 @@ import {
   collection, onSnapshot, query, where, // Añadir where
   doc, addDoc, setDoc, updateDoc, deleteDoc, getDocs // Añadir getDocs
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // --- IMPORTAR FUNCIONES DE AYUDA ---
-import { toYYYYMMDD, getInicioSemana, addDays } from './utils/dates'; // <-- CORREGIDO
+import { toYYYYMMDD } from './utils/dates'; // <-- CORREGIDO
 import { detectarSolapamiento, calcularDuracionEnHoras } from './utils/helpers'; // <-- CORREGIDO
 
 // --- IMPORTAR COMPONENTES ---
@@ -341,8 +340,28 @@ export default function App() {
     }
   };
 
-  const handleDeleteClase = async (id) => { /* ... */ };
-  const handleOpenAlumnoDetail = (alumno) => { /* ... */ };
+  const handleDeleteClase = async (id) => {
+    if (!id || !isAuthReady || !db || !user) {
+      alert("No se puede eliminar la clase."); return;
+    }
+    const confirmed = confirm("¿Seguro que quieres eliminar esta clase?");
+    if (!confirmed) return;
+    const docPath = `users/${user.uid}/clases/${id}`;
+    try {
+      await deleteDoc(doc(db, docPath));
+      console.log("Clase eliminada:", id);
+      if (claseSeleccionada && claseSeleccionada.id === id) {
+        setClaseSeleccionada(null);
+      }
+    } catch (error) {
+      console.error("Error al eliminar clase:", error);
+      alert(`Error al eliminar: ${error.message}`);
+    }
+  };
+  const handleOpenAlumnoDetail = (alumno) => {
+    setSelectedAlumnoForDetail(alumno);
+    setIsAlumnoDetailModalOpen(true);
+  };
 
 
   // --- RENDERIZADO CONDICIONAL DE VISTAS ---
@@ -373,7 +392,6 @@ export default function App() {
         />;
     }
   };
-
 
   // --- RENDERIZADO PRINCIPAL ---
   if (isLoading) {
