@@ -10,7 +10,8 @@ const VISTA_CALENDARIO_OPTIONS = [
   { value: 'mes', label: 'Mes', icon: Calendar },
 ];
 const VISTA_DASHBOARD_OPTION = { value: 'dashboard', label: 'Estadísticas', icon: BarChart3 };
-const VISTA_OPTIONS = [...VISTA_CALENDARIO_OPTIONS, VISTA_DASHBOARD_OPTION];
+const VISTA_MOROSOS_OPTION = { value: 'morosos', label: 'Morosos', icon: BarChart3 };
+const VISTA_OPTIONS = [...VISTA_CALENDARIO_OPTIONS, VISTA_DASHBOARD_OPTION, VISTA_MOROSOS_OPTION];
 
 const getVistaLabel = (vista) => {
   return VISTA_OPTIONS.find(o => o.value === vista)?.label || 'Calendario';
@@ -125,7 +126,7 @@ export default function CabeceraApp({ vista, setVista, fechaActual, setFechaActu
         <div className="flex items-center space-x-4 flex-grow justify-center w-full md:w-auto order-3 md:order-2 mt-4 md:mt-0">
 
           {/* Bloque de Navegación de Fecha */}
-          {vista !== 'dashboard' ? (
+          {vista !== 'dashboard' && vista !== 'morosos' ? (
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleNavegar(-1)}

@@ -24,12 +24,12 @@ const calculateClassIncome = (durationHours, hourlyRate) => {
 
     // Minutos después de la primera hora
     const extraMinutes = durationMinutes - 60;
-    
+
     // Número de bloques de 30 minutos extras (se redondea hacia arriba)
     const extraBlocks = Math.ceil(extraMinutes / 30);
-    
+
     const extraCharge = extraBlocks * 5.00; // 5€ por cada bloque de 30 min extra
-    
+
     return baseRate + extraCharge;
 };
 
@@ -45,7 +45,7 @@ const getSemanasEnMes = (date) => {
     if (currentWeekStart > startOfMonth && currentWeekStart.getMonth() === startOfMonth.getMonth()) {
         currentWeekStart = getInicioSemana(addDays(startOfMonth, -7));
     }
-    
+
     while (currentWeekStart <= endOfMonth || getInicioSemana(currentWeekStart).getMonth() === date.getMonth()) {
         const weekEnd = addDays(currentWeekStart, 6);
         weeks.push({
@@ -56,7 +56,7 @@ const getSemanasEnMes = (date) => {
         currentWeekStart = addDays(currentWeekStart, 7);
         if (currentWeekStart > addDays(endOfMonth, 7)) break;
     }
-    
+
     return weeks.filter(week => week.start <= endOfMonth || week.end >= startOfMonth);
 };
 
@@ -65,8 +65,7 @@ const getSemanasEnMes = (date) => {
 function StatCard({ title, value, icon, colorClass, borderClass }) {
     return (
         // Se mantiene la responsividad aquí: ocupa 1 columna en móvil y 1/3 en tablet/escritorio
-        <div className={`bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow 
-            border-l-4 ${borderClass || 'border-slate-300'} flex items-center gap-4`}>
+        <div className={`bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow border-l-4 ${borderClass || 'border-slate-300'} flex items-center gap-4`}>
             <div className={`p-4 rounded-full ${colorClass} bg-opacity-30`}>
                 {icon}
             </div>
@@ -91,10 +90,10 @@ function GoalProgressCard({ hours, targetHours, monthName }) {
                 <h3 className="text-lg font-semibold text-slate-700">Progreso de Horas ({monthName})</h3>
                 <Target className="text-indigo-500" size={24} />
             </div>
-            
+
             {/* CAMBIO: Fuente más pequeña por defecto, más grande en 'lg' y superior */}
             <p className="text-3xl lg:text-4xl font-extrabold text-slate-800">{hours.toFixed(1)} h</p>
-            
+
             {targetHours > 0 ? (
                 <>
                     <p className="text-sm text-slate-500 mt-1">de {targetHours} horas objetivo</p>
@@ -129,7 +128,7 @@ function AverageRateCard({ avgRate, officialRate }) {
 
             {/* CAMBIO: Fuente más pequeña por defecto, más grande en 'lg' y superior */}
             <p className="text-3xl lg:text-4xl font-extrabold text-slate-800">{formatCurrency(avgRate)}</p>
-            
+
             <p className="text-sm text-slate-500 mt-2">
                 Tasa oficial: {formatCurrency(officialRate)}
             </p>
@@ -157,7 +156,7 @@ function WeekSelector({ weeksInMonth, semanaMostrada, onSelectWeek }) {
                         onClick={() => onSelectWeek(week.start)}
                         // Clases ajustadas para móvil: padding vertical/horizontal y fuente más pequeña si es necesario
                         className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-200 
-                            ${isSelected
+${isSelected
                                 ? 'bg-indigo-600 text-white shadow-md'
                                 : 'bg-white text-slate-600 hover:bg-indigo-100 hover:text-indigo-700'
                             }`}
@@ -171,7 +170,7 @@ function WeekSelector({ weeksInMonth, semanaMostrada, onSelectWeek }) {
 }
 
 
-// --- Componente Principal del Dashboard (Responsive) ---
+// --- Componente Principal del Dashboard (Responsive Y CON PROYECCIÓN ACTUALIZADA) ---
 export default function Dashboard({ clases, userProfile, fechaActual }) {
 
     const [fechaMostrada, setFechaMostrada] = useState(fechaActual);
@@ -199,6 +198,7 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                 ingresosSemana: 0, ingresosMes: 0, horasMes: 0, horasSemana: 0,
                 chartData: [], precioHora: 0, inicioSemanaActual: semanaMostrada,
                 avgRateMes: 0, metaHorasMensual: 0,
+                proyeccionAnual: 0 // Añadido
             };
         }
 
@@ -224,13 +224,13 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         const clasesDeMes = clasesPagadas.filter(c => c.fecha >= mesYMD && c.fecha < toYYYYMMDD(inicioMesSiguiente));
 
         // --- CÁLCULO DE INGRESOS USANDO LA NUEVA LÓGICA ---
-        
+
         // 1. Ingresos por Semana
-        const ingresosSemana = clasesDeSemana.reduce((sum, c) => 
+        const ingresosSemana = clasesDeSemana.reduce((sum, c) =>
             sum + calculateClassIncome(c.duracionHoras || 0, precioHora), 0);
 
         // 2. Ingresos por Mes
-        const ingresosMes = clasesDeMes.reduce((sum, c) => 
+        const ingresosMes = clasesDeMes.reduce((sum, c) =>
             sum + calculateClassIncome(c.duracionHoras || 0, precioHora), 0);
 
         // 3. Horas
@@ -247,7 +247,7 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
             const diaKey = String(i).padStart(2, '0');
             ingresosPorDia[diaKey] = { name: diaKey, Ingresos: 0 };
         }
-        
+
         clasesDeMes.forEach(clase => {
             const dia = new Date(clase.fecha.replace(/-/g, '/')).getDate();
             const diaKey = String(dia).padStart(2, '0');
@@ -258,12 +258,59 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         const chartData = Object.values(ingresosPorDia).sort((a, b) => a.name.localeCompare(b.name));
 
 
+        // --- INICIO DE LA NUEVA LÓGICA DE PROYECCIÓN ANUAL ---
+        let proyeccionAnual = 0;
+
+        // 1. Obtener el año actual (basado en 'fechaActual', no en 'fechaMostrada')
+        const currentYear = fechaActual.getFullYear();
+        const startOfYear = new Date(currentYear, 0, 1);
+        const endOfYear = new Date(currentYear, 11, 31);
+
+        const startOfYearYMD = toYYYYMMDD(startOfYear);
+        const endOfYearYMD = toYYYYMMDD(endOfYear);
+
+        // 2. Filtrar clases pagadas de este año
+        const clasesDelAnoActual = clasesPagadas.filter(
+            c => c.fecha >= startOfYearYMD && c.fecha <= endOfYearYMD
+        );
+
+        if (clasesDelAnoActual.length > 0) {
+            // 3. Calcular ingresos totales del año
+            const ingresosAnoActual = clasesDelAnoActual.reduce((sum, c) =>
+                sum + calculateClassIncome(c.duracionHoras || 0, precioHora), 0);
+
+            // 4. Encontrar primera y última fecha de clase del año
+            const fechasDelAno = clasesDelAnoActual.map(c => c.fecha).sort();
+            const primeraFechaStr = fechasDelAno[0];
+            const ultimaFechaStr = fechasDelAno[fechasDelAno.length - 1];
+
+            // 5. Calcular días transcurridos (inclusive)
+            // Usamos el parser que se ve en el gráfico (new Date(string.replace(/-/g, '/')))
+            const primeraFechaDate = new Date(primeraFechaStr.replace(/-/g, '/'));
+            const ultimaFechaDate = new Date(ultimaFechaStr.replace(/-/g, '/'));
+
+            if (!isNaN(primeraFechaDate.getTime()) && !isNaN(ultimaFechaDate.getTime())) {
+                const diffTime = ultimaFechaDate.getTime() - primeraFechaDate.getTime();
+                // +1 para que sea inclusivo (si solo hay 1 día, diffTime es 0, pero diasTranscurridos es 1)
+                const diasTranscurridos = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+                if (diasTranscurridos > 0) {
+                    // (Ingresos / Días) * 270
+                    proyeccionAnual = (ingresosAnoActual / diasTranscurridos) * 270;
+                }
+            }
+        }
+        // --- FIN CÁLCULO PROYECCIÓN ---
+
+
         return {
             ingresosSemana, ingresosMes, horasMes, horasSemana,
             chartData, precioHora, inicioSemanaActual: inicioSemanaSeleccionada,
-            avgRateMes, metaHorasMensual
+            avgRateMes, metaHorasMensual,
+            proyeccionAnual // Devolvemos el nuevo valor
         };
-    }, [clases, fechaMostrada, semanaMostrada, userProfile]);
+        // Añadir 'fechaActual' a la matriz de dependencias
+    }, [clases, fechaMostrada, semanaMostrada, userProfile, fechaActual]);
 
     // Calcular las semanas del mes seleccionado para el WeekSelector
     const weeksInMonth = useMemo(() => getSemanasEnMes(fechaMostrada), [fechaMostrada]);
@@ -290,12 +337,12 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
 
     return (
         // El padding base de 6 (`p-6`) funciona bien, pero en móvil lo ajustamos a `p-4` o `p-5` si fuera necesario
-        <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6"> 
+        <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6">
 
             {/* CABECERA DE NAVEGACIÓN */}
             <div className="bg-white p-4 rounded-xl shadow-md border border-slate-200">
                 {/* CAMBIO: Añadido 'flex-wrap' y 'gap-2' para que el selector de mes salte si no cabe */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center flex-wrap gap-2"> 
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center flex-wrap gap-2">
                     <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">
                         Dashboard de Ingresos 📈
                     </h2>
@@ -312,7 +359,7 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                         </button>
                         <button
                             onClick={() => handleNavegarMes(1)}
-                            className="p-2 rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
+                            A className="p-2 rounded-full text-slate-700 bg-slate-100 hover:bg-slate-200 transition"
                             aria-label="Mes siguiente"
                         >
                             <ChevronRight size={20} />
@@ -371,13 +418,8 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                 </div>
 
                 {/* 2. CONTENIDO PRINCIPAL: Gráfico y Detalles (Stacking en móvil) */}
-                {/* CAMBIO ESTRUCTURAL: 
-                  Este div es ahora 'flex-col' para apilar:
-                  1. La fila superior (Gráfico + 2 Tarjetas)
-                  2. La fila inferior (Productividad)
-                */}
-                <div className="flex flex-col gap-6"> 
-                
+                <div className="flex flex-col gap-6">
+
                     {/* --- FILA SUPERIOR (Gráfico y 2 Tarjetas Laterales) --- */}
                     {/* Este div interno mantiene la lógica de 'lg:flex-row' */}
                     <div className="flex flex-col lg:flex-row gap-6">
@@ -389,7 +431,7 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                             </h3>
                             {stats.chartData.length > 0 ? (
                                 // CAMBIO: Altura responsiva (más baja en móvil)
-                                <div className="w-full h-[250px] sm:h-[350px]"> 
+                                <div className="w-full h-[250px] sm:h-[350px]">
                                     <ResponsiveContainer>
                                         <BarChart data={stats.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -424,8 +466,8 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                                 officialRate={stats.precioHora}
                             />
                         </div>
-                    
-                    </div> 
+
+                    </div>
                     {/* --- FIN DE LA FILA SUPERIOR --- */}
 
 
@@ -467,13 +509,11 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                                 <span className="font-bold text-base flex items-center text-slate-700">
                                     <TrendingUp size={18} className='text-orange-500 mr-2' /> Proyección Anual
                                 </span>
-                                {/* CAMBIO: fuente responsiva en el valor */}
-                                <span className="font-extrabold text-lg sm:text-xl text-indigo-700">{formatCurrency(stats.ingresosMes * 12)}</span>
+                                {/* CAMBIO: fuente responsiva en el valor Y USO DE stats.proyeccionAnual */}
+                                <span className="font-extrabold text-lg sm:text-xl text-indigo-700">{formatCurrency(stats.proyeccionAnual)}</span>
                             </div>
                         </div>
                     </div>
-                    {/* --- FIN DE LA FILA INFERIOR --- */}
-
                 </div>
             </div>
         </div>

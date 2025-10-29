@@ -365,7 +365,7 @@ export default function App() {
 
     switch (vista) {
       case 'semana':
-        return <VistaSemana fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} />;
+        return <VistaSemana fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} onAddClase={handleAddClaseClick} />;
       case 'dia':
         return <VistaDia fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} />;
       case 'dashboard':
@@ -435,8 +435,8 @@ export default function App() {
           onOpenMorosos={() => setVista('morosos')}
         />
         <div className="flex-1 flex flex-col overflow-auto">
-          {vista !== 'dashboard' && <CabeceraSemana fechaActual={fechaActual || new Date()} vista={vista} />}
-          {vista !== 'dashboard' && <CabeceraMes vista={vista} />}
+          {vista !== 'dashboard' && vista !== 'morosos' && <CabeceraSemana fechaActual={fechaActual || new Date()} vista={vista} />}
+          {vista !== 'dashboard' && vista !== 'morosos' && <CabeceraMes vista={vista} />}
           {isDataLoading ? (
             <div className="flex-1 flex items-center justify-center text-slate-500">Cargando datos...</div>
           ) : renderVista()}
