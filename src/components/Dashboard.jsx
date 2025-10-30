@@ -64,7 +64,7 @@ function StatCard({ title, value, icon, colorClass, borderClass }) {
   return (
     <div
       className={`bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow 
-            border-l-4 ${borderClass || 'border-slate-300'} flex items-center gap-4`}
+            border-l-4 ${borderClass || 'border-slate-300'} flex items-center gap-4`}
     >
       <div className={`p-4 rounded-full ${colorClass} bg-opacity-30`}>{icon}</div>
       <div>
@@ -148,11 +148,10 @@ function WeekSelector({ weeksInMonth, semanaMostrada, onSelectWeek }) {
             key={toYYYYMMDD(week.start)}
             onClick={() => onSelectWeek(week.start)}
             className={`px-3 py-1 text-xs sm:text-sm font-medium rounded-lg transition-colors duration-200 cursor-pointer 
-                            ${
-                              isSelected
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-white text-slate-600 hover:bg-indigo-100 hover:text-indigo-700'
-                            }`}
+                            ${isSelected
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-indigo-100 hover:text-indigo-700'
+              }`}
           >
             {week.label}
           </button>
@@ -196,7 +195,10 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         avgRateMes: 0,
         metaHorasMensual: 0,
         proyeccionAnual: 0,
+        ingresosAnoActual: 0, // --- CAMBIO ---
+        horasAnoActual: 0,    // --- CAMBIO ---
       };
+      L
     }
 
     const precioHora = userProfile.precioHora || 0;
@@ -254,6 +256,9 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
 
     // --- INICIO DE LA NUEVA LÓGICA DE PROYECCIÓN ANUAL ---
     let proyeccionAnual = 0;
+    // --- CAMBIO: Inicializar totales anuales ---
+    let ingresosAnoActual = 0;
+    let horasAnoActual = 0;
 
     // 1. Obtener el año actual (basado en 'fechaActual', no en 'fechaMostrada')
     const currentYear = fechaActual.getFullYear();
@@ -268,8 +273,15 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
 
     if (clasesDelAnoActual.length > 0) {
       // 3. Calcular ingresos totales del año
-      const ingresosAnoActual = clasesDelAnoActual.reduce(
+      // --- CAMBIO: Asignar a la variable ---
+      ingresosAnoActual = clasesDelAnoActual.reduce(
         (sum, c) => sum + calculateClassIncome(c.duracionHoras || 0, precioHora),
+        0
+      );
+
+      // --- CAMBIO: Calcular horas totales del año ---
+      horasAnoActual = clasesDelAnoActual.reduce(
+        (sum, c) => sum + (c.duracionHoras || 0),
         0
       );
 
@@ -322,6 +334,8 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
       avgRateMes,
       metaHorasMensual,
       proyeccionAnual, // Devolvemos el nuevo valor
+      ingresosAnoActual, // --- CAMBIO ---
+      horasAnoActual,    // --- CAMBIO ---
     };
     // Añadir 'fechaActual' a la matriz de dependencias
   }, [clases, fechaMostrada, semanaMostrada, userProfile, fechaActual]);
@@ -485,6 +499,16 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                 <span className="text-right font-semibold text-blue-600">{stats.horasMes.toFixed(1)} h</span>
                 <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosMes)}</span>
               </div>
+
+              {/* --- CAMBIO: Fila Año Actual --- */}
+              <div className="grid grid-cols-3 items-center text-slate-800 border-t pt-2">
+                <span className="font-medium text-sm text-slate-600 truncate">
+                  Este Año ({fechaActual.getFullYear()})
+                </span>
+                <span className="text-right font-semibold text-blue-600">{stats.horasAnoActual.toFixed(1)} h</span>
+                <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosAnoActual)}</span>
+              </div>
+              {/* --- FIN DEL CAMBIO --- */}
 
               {/* Proyección Anual */}
               <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-dashed border-slate-200">
