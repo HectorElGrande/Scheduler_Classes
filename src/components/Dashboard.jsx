@@ -3,6 +3,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { formatFecha, getInicioSemana, addDays, toYYYYMMDD } from '../utils/dates';
 import { DollarSign, Clock, ChevronLeft, ChevronRight, Target, TrendingUp } from 'lucide-react';
 
+// --- (INICIO) FUNCIONES AUXILIARES RESTAURADAS ---
+
 // Formateador de moneda
 const formatCurrency = (value) => {
   return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -161,7 +163,10 @@ function WeekSelector({ weeksInMonth, semanaMostrada, onSelectWeek }) {
   );
 }
 
-// --- Componente Principal del Dashboard (Responsive Y CON PROYECCIÓN ACTUALIZADA) ---
+// --- (FIN) FUNCIONES AUXILIARES RESTAURADAS ---
+
+
+// --- Componente Principal del Dashboard (ACTUALIZADO) ---
 export default function Dashboard({ clases, userProfile, fechaActual }) {
   const [fechaMostrada, setFechaMostrada] = useState(fechaActual);
   const [semanaMostrada, setSemanaMostrada] = useState(getInicioSemana(fechaActual));
@@ -181,7 +186,7 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
     setSemanaMostrada(newWeekStart);
   };
 
-  // --- CÁLCULO DE DATOS Y RANGOS (ACTUALIZADO CON CÁLCULO DE INGRESOS) ---
+  // --- CÁLCULO DE DATOS Y RANGOS (ACTUALIZADO) ---
   const stats = useMemo(() => {
     if (!userProfile) {
       return {
@@ -195,14 +200,19 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         avgRateMes: 0,
         metaHorasMensual: 0,
         proyeccionAnual: 0,
-        ingresosAnoActual: 0, // --- CAMBIO ---
-        horasAnoActual: 0,    // --- CAMBIO ---
+        ingresosCurso: 0, // Renombrado para claridad
+        horasCurso: 0,    // Renombrado para claridad
+        cursoLabel: '',
       };
-      L
     }
 
     const precioHora = userProfile.precioHora || 0;
     const metaHorasMensual = userProfile.metaHorasMensual || 0;
+
+    // Filtrar clases por períodos (solo pagadas)
+    const clasesPagadas = clases.filter((c) => c.estadoPago === 'Pagado');
+
+    // --- 1. Cálculos basados en la NAVEGACIÓN (semanaMostrada y fechaMostrada) ---
 
     // Rango de la semana SELECCIONADA
     const inicioSemanaSeleccionada = semanaMostrada;
@@ -210,41 +220,30 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
     const semanaYMD = toYYYYMMDD(inicioSemanaSeleccionada);
     const finSemanaYMD = toYYYYMMDD(finSemanaSeleccionada);
 
-    // Rango del mes
-    const inicioMesActual = new Date(fechaMostrada.getFullYear(), fechaMostrada.getMonth(), 1);
+    // Rango del mes SELECCIONADO
+    const inicioMesMostrado = new Date(fechaMostrada.getFullYear(), fechaMostrada.getMonth(), 1);
     const inicioMesSiguiente = new Date(fechaMostrada.getFullYear(), fechaMostrada.getMonth() + 1, 1);
-    const mesYMD = toYYYYMMDD(inicioMesActual);
+    const mesYMD = toYYYYMMDD(inicioMesMostrado);
 
-    // Filtrar clases por períodos (solo pagadas)
-    const clasesPagadas = clases.filter((c) => c.estadoPago === 'Pagado');
-
-    // Filtrar usando la semana seleccionada
+    // Clases de la SEMANA (basado en semanaMostrada)
     const clasesDeSemana = clasesPagadas.filter((c) => c.fecha >= semanaYMD && c.fecha <= finSemanaYMD);
+    // Clases del MES (basado en fechaMostrada)
     const clasesDeMes = clasesPagadas.filter((c) => c.fecha >= mesYMD && c.fecha < toYYYYMMDD(inicioMesSiguiente));
 
-    // --- CÁLCULO DE INGRESOS USANDO LA NUEVA LÓGICA ---
-
-    // 1. Ingresos por Semana
+    // 1.1. Ingresos y Horas (Semana y Mes)
     const ingresosSemana = clasesDeSemana.reduce((sum, c) => sum + calculateClassIncome(c.duracionHoras || 0, precioHora), 0);
-
-    // 2. Ingresos por Mes
     const ingresosMes = clasesDeMes.reduce((sum, c) => sum + calculateClassIncome(c.duracionHoras || 0, precioHora), 0);
-
-    // 3. Horas
     const horasMes = clasesDeMes.reduce((sum, c) => sum + (c.duracionHoras || 0), 0);
     const horasSemana = clasesDeSemana.reduce((sum, c) => sum + (c.duracionHoras || 0), 0);
-
-    // Tasa promedio real del mes (Se mantiene para la tarjeta lateral de tasa)
     const avgRateMes = horasMes > 0 ? ingresosMes / horasMes : 0;
 
-    // Datos para el gráfico
+    // 1.2. Datos del Gráfico (basado en fechaMostrada)
     const diasEnMes = new Date(fechaMostrada.getFullYear(), fechaMostrada.getMonth() + 1, 0).getDate();
     const ingresosPorDia = {};
     for (let i = 1; i <= diasEnMes; i++) {
       const diaKey = String(i).padStart(2, '0');
       ingresosPorDia[diaKey] = { name: diaKey, Ingresos: 0 };
     }
-
     clasesDeMes.forEach((clase) => {
       const dia = new Date(clase.fecha.replace(/-/g, '/')).getDate();
       const diaKey = String(dia).padStart(2, '0');
@@ -254,45 +253,91 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
     });
     const chartData = Object.values(ingresosPorDia).sort((a, b) => a.name.localeCompare(b.name));
 
-    // --- INICIO DE LA NUEVA LÓGICA DE PROYECCIÓN ANUAL ---
+    // --- 1.3. LÓGICA DE AÑO ACADÉMICO (CURSO) - Basado en fechaMostrada ---
+    let ingresosCurso = 0;
+    let horasCurso = 0;
+    let cursoLabel = '';
+
+    // Determinar el año académico basado en la fecha MOSTRADA
+    const monthMostrado = fechaMostrada.getMonth(); // 0 (Jan) - 11 (Dec)
+    const yearMostrado = fechaMostrada.getFullYear();
+
+    let startYearMostrado, endYearMostrado;
+
+    if (monthMostrado >= 8) { // 8 es Septiembre (0-indexed)
+      startYearMostrado = yearMostrado;
+      endYearMostrado = yearMostrado + 1;
+    } else {
+      startYearMostrado = yearMostrado - 1;
+      endYearMostrado = yearMostrado;
+    }
+
+    cursoLabel = `${startYearMostrado}/${endYearMostrado}`;
+
+    const startOfAcademicYearMostrado = new Date(startYearMostrado, 8, 1); // September 1st
+    const endOfAcademicYearMostrado = new Date(endYearMostrado, 7, 31);   // August 31st
+
+    const startOfAcademicYearMostradoYMD = toYYYYMMDD(startOfAcademicYearMostrado);
+    const endOfAcademicYearMostradoYMD = toYYYYMMDD(endOfAcademicYearMostrado);
+
+    // Filtrar clases pagadas del AÑO ACADÉMICO (CURSO) MOSTRADO
+    const clasesDelCursoMostrado = clasesPagadas.filter(
+      (c) => c.fecha >= startOfAcademicYearMostradoYMD && c.fecha <= endOfAcademicYearMostradoYMD);
+
+    if (clasesDelCursoMostrado.length > 0) {
+      // Calcular ingresos totales del AÑO ACADÉMICO MOSTRADO
+      ingresosCurso = clasesDelCursoMostrado.reduce(
+        (sum, c) => sum + calculateClassIncome(c.duracionHoras || 0, precioHora),
+        0 // <-- ¡AÑADIR ESTO!
+      );
+
+      // Calcular horas totales del AÑO ACADÉMICO MOSTRADO
+      horasCurso = clasesDelCursoMostrado.reduce(
+        (sum, c) => sum + (c.duracionHoras || 0),
+        0
+      );
+    }
+
+    // --- 2. CÁLCULO DE PROYECCIÓN - Basado en fechaActual (HOY) ---
     let proyeccionAnual = 0;
-    // --- CAMBIO: Inicializar totales anuales ---
-    let ingresosAnoActual = 0;
-    let horasAnoActual = 0;
 
-    // 1. Obtener el año actual (basado en 'fechaActual', no en 'fechaMostrada')
-    const currentYear = fechaActual.getFullYear();
-    const startOfYear = new Date(currentYear, 0, 1);
-    const endOfYear = new Date(currentYear, 11, 31);
+    // Determinar el año académico ACTUAL (basado en fechaActual)
+    const currentMonthActual = fechaActual.getMonth();
+    const currentYearActual = fechaActual.getFullYear();
 
-    const startOfYearYMD = toYYYYMMDD(startOfYear);
-    const endOfYearYMD = toYYYYMMDD(endOfYear);
+    let startYearActual, endYearActual;
 
-    // 2. Filtrar clases pagadas de este año
-    const clasesDelAnoActual = clasesPagadas.filter((c) => c.fecha >= startOfYearYMD && c.fecha <= endOfYearYMD);
+    if (currentMonthActual >= 8) { // Sept-Dec
+      startYearActual = currentYearActual;
+      endYearActual = currentYearActual + 1;
+    } else { // Jan-Aug
+      startYearActual = currentYearActual - 1;
+      endYearActual = currentYearActual;
+    }
 
-    if (clasesDelAnoActual.length > 0) {
-      // 3. Calcular ingresos totales del año
-      // --- CAMBIO: Asignar a la variable ---
-      ingresosAnoActual = clasesDelAnoActual.reduce(
+    const startOfAcademicYearActual = new Date(startYearActual, 8, 1);
+    const endOfAcademicYearActual = new Date(endYearActual, 7, 31);
+    const startOfAcademicYearActualYMD = toYYYYMMDD(startOfAcademicYearActual);
+    const endOfAcademicYearActualYMD = toYYYYMMDD(endOfAcademicYearActual);
+
+    // Filtrar clases pagadas del AÑO ACADÉMICO ACTUAL (para la proyección)
+    const clasesDelCursoActual = clasesPagadas.filter(
+      (c) => c.fecha >= startOfAcademicYearActualYMD && c.fecha <= endOfAcademicYearActualYMD
+    );
+
+    if (clasesDelCursoActual.length > 0) {
+      // Ingresos totales del curso ACTUAL
+      const ingresosCursoActual = clasesDelCursoActual.reduce(
         (sum, c) => sum + calculateClassIncome(c.duracionHoras || 0, precioHora),
         0
       );
 
-      // --- CAMBIO: Calcular horas totales del año ---
-      horasAnoActual = clasesDelAnoActual.reduce(
-        (sum, c) => sum + (c.duracionHoras || 0),
-        0
-      );
-
-      // 4. Encontrar la primera fecha de clase del año
-      const fechasDelAno = clasesDelAnoActual.map((c) => c.fecha).sort();
-      const primeraFechaStr = fechasDelAno[0];
+      // Encontrar la primera fecha de clase del curso ACTUAL
+      const fechasDelCursoActual = clasesDelCursoActual.map((c) => c.fecha).sort();
+      const primeraFechaStr = fechasDelCursoActual[0];
       const primeraFechaDate = new Date(primeraFechaStr.replace(/-/g, '/'));
 
-      // --- LÓGICA CORRECTA: Días desde la primera clase HASTA HOY (fechaActual) ---
-
-      // Normalizar primeraFechaDate a medianoche para evitar problemas con las horas
+      // Normalizar primeraFechaDate a medianoche
       const primeraFechaNormalized = new Date(
         primeraFechaDate.getFullYear(),
         primeraFechaDate.getMonth(),
@@ -306,22 +351,17 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
         fechaActual.getDate()
       );
 
-      if (!isNaN(primeraFechaNormalized.getTime())) {
-        // Calcular la diferencia en milisegundos
+      // Asegurarse de que la fecha de inicio no sea futura
+      if (!isNaN(primeraFechaNormalized.getTime()) && primeraFechaNormalized <= fechaActualNormalized) {
         const diffTime = fechaActualNormalized.getTime() - primeraFechaNormalized.getTime();
-
-        // Convertir milisegundos a días y sumar 1 para que sea inclusivo
         const diasTranscurridos = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-        // Asegurarse de que los días transcurridos sean al menos 1 (evita división por cero si la primera clase es hoy)
         if (diasTranscurridos > 0) {
-          // (Ingresos / Días) * 270
-          proyeccionAnual = (ingresosAnoActual / diasTranscurridos) * 270;
+          // (Ingresos / Días) * 270 (Usando los ingresos del curso ACTUAL)
+          proyeccionAnual = (ingresosCursoActual / diasTranscurridos) * 270;
         }
       }
-      // --- FIN DEL CAMBIO ---
     }
-    // --- FIN CÁLCULO PROYECCIÓN ---
 
     return {
       ingresosSemana,
@@ -333,11 +373,11 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
       inicioSemanaActual: inicioSemanaSeleccionada,
       avgRateMes,
       metaHorasMensual,
-      proyeccionAnual, // Devolvemos el nuevo valor
-      ingresosAnoActual, // --- CAMBIO ---
-      horasAnoActual,    // --- CAMBIO ---
+      proyeccionAnual,    // Basada en fechaActual
+      ingresosCurso,     // Basado en fechaMostrada
+      horasCurso,        // Basado en fechaMostrada
+      cursoLabel,        // Basado en fechaMostrada
     };
-    // Añadir 'fechaActual' a la matriz de dependencias
   }, [clases, fechaMostrada, semanaMostrada, userProfile, fechaActual]);
 
   // Calcular las semanas del mes seleccionado para el WeekSelector
@@ -500,17 +540,20 @@ export default function Dashboard({ clases, userProfile, fechaActual }) {
                 <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosMes)}</span>
               </div>
 
-              {/* --- CAMBIO: Fila Año Actual --- */}
+              {/* --- CAMBIO: Fila Año Académico (Curso) --- */}
               <div className="grid grid-cols-3 items-center text-slate-800 border-t pt-2">
                 <span className="font-medium text-sm text-slate-600 truncate">
-                  Este Año ({fechaActual.getFullYear()})
+                  {/* Ahora usa stats.cursoLabel (basado en fechaMostrada) */}
+                  Este Curso ({stats.cursoLabel})
                 </span>
-                <span className="text-right font-semibold text-blue-600">{stats.horasAnoActual.toFixed(1)} h</span>
-                <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosAnoActual)}</span>
+                {/* Ahora usa stats.horasCurso (basado en fechaMostrada) */}
+                <span className="text-right font-semibold text-blue-600">{stats.horasCurso.toFixed(1)} h</span>
+                {/* Ahora usa stats.ingresosCurso (basado en fechaMostrada) */}
+                <span className="text-right font-bold text-green-600">{formatCurrency(stats.ingresosCurso)}</span>
               </div>
               {/* --- FIN DEL CAMBIO --- */}
 
-              {/* Proyección Anual */}
+              {/* Proyección Anual (se mantiene basada en fechaActual) */}
               <div className="flex justify-between items-center mt-4 pt-3 border-t-2 border-dashed border-slate-200">
                 <span className="font-bold text-base flex items-center text-slate-700">
                   <TrendingUp size={18} className="text-orange-500 mr-2" /> Proyección Anual
