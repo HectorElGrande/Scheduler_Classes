@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Wallet } from 'lucide-react';
 
 // --- IMPORTAR FIREBASE ---
 import {
@@ -33,6 +33,7 @@ import AuthScreen from './components/AuthScreen'; // <-- CORREGIDO
 import ProfileModal from './components/ProfileModal'; // <-- CORREGIDO
 import AlumnoDetalleModal from './components/AlumnoDetalleModal'; // <-- CORREGIDO
 import Dashboard from './components/Dashboard'; // <-- CORREGIDO
+import GestorDeudasModal from './components/GestorDeudasModal';
 
 
 // --- Componente Principal de la Aplicación ---
@@ -44,6 +45,8 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null); // <-- ESTADO CLAVE
 
   // --- Estado de Carga y UI ---
+  const [deudas, setDeudas] = useState([]);
+  const [isDeudasModalOpen, setIsDeudasModalOpen] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -133,7 +136,19 @@ export default function App() {
       setIsDataLoading(false);
     }, (error) => { console.error("Error al escuchar Alumnos:", error); setAlumnos([]); setIsDataLoading(false); });
 
-    return () => { unsubscribeProfile(); unsubscribeClases(); unsubscribeAlumnos(); };
+    // 4. NUEVO: Listener para Deudas
+    const deudasPath = `users/${user.uid}/deudas`;
+    const qDeudas = query(collection(db, deudasPath));
+    const unsubscribeDeudas = onSnapshot(qDeudas, (snapshot) => {
+      const deudasData = [];
+      snapshot.forEach(doc => {
+        deudasData.push({ ...doc.data(), id: doc.id });
+      });
+      setDeudas(deudasData);
+    }, (error) => { console.error("Error al escuchar Deudas:", error); });
+
+    // Actualizar el return del useEffect
+    return () => { unsubscribeProfile(); unsubscribeClases(); unsubscribeAlumnos(); unsubscribeDeudas(); };
   }, [isAuthReady, user]);
 
 
@@ -358,6 +373,51 @@ export default function App() {
       alert(`Error al eliminar: ${error.message}`);
     }
   };
+
+  const handleSaveDeuda = async (nuevaDeuda) => {
+    if (!user) return;
+    const deudasRef = collection(db, `users/${user.uid}/deudas`);
+
+    // LÓGICA DE ACTUALIZACIÓN AUTOMÁTICA
+    // Buscamos si ya existe una deuda para este alumno (ignorando mayúsculas/minúsculas por seguridad)
+    const deudaExistente = deudas.find(d => d.alumno.toLowerCase() === nuevaDeuda.alumno.toLowerCase());
+
+    try {
+      if (deudaExistente) {
+        // ACTUALIZAR: Sumar a la existente
+        const nuevaCantidadTotal = parseFloat(deudaExistente.cantidad) + parseFloat(nuevaDeuda.cantidad);
+        const docRef = doc(db, `users/${user.uid}/deudas`, deudaExistente.id);
+
+        await updateDoc(docRef, {
+          cantidad: nuevaCantidadTotal,
+          nota: nuevaDeuda.nota ? `${deudaExistente.nota ? deudaExistente.nota + ' | ' : ''}${nuevaDeuda.nota}` : deudaExistente.nota,
+          fecha: new Date().toISOString()
+        });
+        alert(`¡Deuda actualizada! Ahora le debes un total de ${nuevaCantidadTotal}€ a ${nuevaDeuda.alumno}`);
+      } else {
+        // CREAR: Nueva entrada
+        await addDoc(deudasRef, {
+          ...nuevaDeuda,
+          fecha: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error("Error guardando deuda:", error);
+      alert("Error al guardar la deuda");
+    }
+  };
+
+  const handleDeleteDeuda = async (id) => {
+    if (!user) return;
+    if (confirm("¿Has saldado esta deuda? Se eliminará de la lista.")) {
+      try {
+        await deleteDoc(doc(db, `users/${user.uid}/deudas`, id));
+      } catch (error) {
+        console.error("Error eliminando deuda:", error);
+      }
+    }
+  };
+
   const handleOpenAlumnoDetail = (alumno) => {
     setSelectedAlumnoForDetail(alumno);
     setIsAlumnoDetailModalOpen(true);
@@ -483,7 +543,29 @@ export default function App() {
           }}
         />
       )}
-
+      <GestorDeudasModal
+        isOpen={isDeudasModalOpen}
+        onClose={() => setIsDeudasModalOpen(false)}
+        alumnos={alumnos}
+        deudas={deudas}
+        onSave={handleSaveDeuda}
+        onDelete={handleDeleteDeuda}
+      />
+      {vista !== 'dashboard' && (
+        <button
+          onClick={() => setIsDeudasModalOpen(true)}
+          className="fixed bottom-24 right-6 z-40 h-12 w-12 flex items-center justify-center bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 transition-all duration-300 hover:scale-110"
+          title="Gestor de Deudas"
+        >
+          {/* Indicador rojo si hay deudas */}
+          {deudas.length > 0 && (
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-600 rounded-full border-2 border-white flex items-center justify-center text-[9px] font-bold">
+              {deudas.length}
+            </span>
+          )}
+          <Wallet size={20} />
+        </button>
+      )}
       {/* Botón Flotante */}
       {vista !== 'dashboard' && (
         <button
