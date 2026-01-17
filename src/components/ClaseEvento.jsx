@@ -1,7 +1,5 @@
 import React, { useMemo } from 'react';
 import { User, FileText, Clock } from 'lucide-react';
-// Asegúrate que esta ruta es correcta si la usas
-// import { calcularDuracionEnHoras } from '../utils/helpers';
 
 // Funciones de color (definidas fuera o dentro, pero deben estar activas)
 const getBGColor = (materia = "") => { let hash = 0; for (let i = 0; i < materia.length; i++) { hash = materia.charCodeAt(i) + ((hash << 5) - hash); } const h = hash % 360; return `hsl(${h}, 70%, 90%)`; };
@@ -72,7 +70,6 @@ export default function ClaseEvento({ clase, onSelectClase, style }) {
                 </>
             )}
 
-            {/* --- Diseño Compacto (< 60 min) --- */}
             {isCompact && (
                 // Usamos un layout vertical simple
                 <div className="space-y-0.5 pr-16"> {/* Espacio para el badge */}

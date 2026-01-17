@@ -3,7 +3,7 @@ import { HORAS_DIA } from '../utils/constants';
 import { getInicioSemana, addDays, toYYYYMMDD } from '../utils/dates';
 import ClaseEvento from './ClaseEvento';
 
-export default function VistaSemana({ fechaActual, clases, onSelectClase }) {
+export default function VistaSemana({ fechaActual, clases, onSelectClase, onAddClase }) {
     if (!Array.isArray(clases)) clases = [];
     // Safety check for fechaActual
     const safeFechaActual = (fechaActual instanceof Date && !isNaN(fechaActual)) ? fechaActual : new Date();
@@ -34,9 +34,9 @@ export default function VistaSemana({ fechaActual, clases, onSelectClase }) {
                 const fechaYMD = toYYYYMMDD(dia);
                 const clasesDelDia = clases.filter(c => c && c.fecha === fechaYMD);
                 return (
-                    <div key={index} className="relative border-l border-slate-200">
-                        {HORAS_DIA.map(hora => (<div key={hora} className="h-24 border-t border-slate-200"></div>))}
-                        <div className="absolute inset-0">{clasesDelDia.map(clase => (
+                    <div key={index} className="relative border-l border-slate-200" onClick={() => onAddClase(dia)}>
+                        {HORAS_DIA.map(hora => (<div key={hora} className="h-24 border-t border-slate-200 hover:bg-slate-100"></div>))}
+                        <div className="absolute inset-0 ">{clasesDelDia.map(clase => (
                             clase && clase.id ? (<ClaseEvento key={clase.id} clase={clase} onSelectClase={onSelectClase} style={calcularPosicionEvento(clase)} />) : null
                         ))}</div>
                     </div>

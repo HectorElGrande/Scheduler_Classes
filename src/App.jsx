@@ -34,7 +34,7 @@ import ProfileModal from './components/ProfileModal'; // <-- CORREGIDO
 import AlumnoDetalleModal from './components/AlumnoDetalleModal'; // <-- CORREGIDO
 import Dashboard from './components/Dashboard'; // <-- CORREGIDO
 import GestorDeudasModal from './components/GestorDeudasModal';
-
+import Morosos from './components/CuentasPorCobrar';
 
 // --- Componente Principal de la Aplicación ---
 export default function App() {
@@ -259,7 +259,6 @@ export default function App() {
       await setDoc(docRef, alumnoData);
       return { ...alumnoData, id: id };
     } catch (error) {
-      console.error("Error al actualizar alumno:", error);
       alert(`Error al actualizar el alumno: ${error.message}`);
       throw error;
     }
@@ -271,12 +270,7 @@ export default function App() {
     const q = query(clasesRef, where("alumno", "==", alumnoNombre));
     try {
       const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        alert(`No se puede eliminar a este alumno porque tiene ${querySnapshot.size} clase(s) asociada(s). Elimina o reasigna primero sus clases.`);
-        return;
-      }
     } catch (error) {
-      console.error("Error al comprobar clases asociadas:", error);
       alert("Error al verificar si el alumno tiene clases. Inténtalo de nuevo.");
       return;
     }
@@ -284,7 +278,6 @@ export default function App() {
     try {
       await deleteDoc(docRef);
     } catch (error) {
-      console.error("Error al eliminar alumno:", error);
       alert(`Error al eliminar el alumno: ${error.message}`);
       throw error;
     }
@@ -431,7 +424,7 @@ export default function App() {
 
     switch (vista) {
       case 'semana':
-        return <VistaSemana fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} />;
+        return <VistaSemana fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} onAddClase={handleAddClaseClick} />;
       case 'dia':
         return <VistaDia fechaActual={safeDate} clases={readyClases} onSelectClase={setClaseSeleccionada} />;
       case 'dashboard':
@@ -439,6 +432,13 @@ export default function App() {
           clases={readyClases}
           userProfile={userProfile}
           fechaActual={safeDate}
+        />;
+      case 'morosos':
+        return <Morosos
+          clases={readyClases}
+          alumnos={alumnos || []}
+          userProfile={userProfile}
+          onSaveClase={handleSaveClase}
         />;
       case 'mes':
       default:
@@ -491,10 +491,11 @@ export default function App() {
           onLogout={handleLogout}
           onOpenProfile={() => setIsProfileModalOpen(true)}
           onOpenDashboard={() => setVista('dashboard')}
+          onOpenMorosos={() => setVista('morosos')}
         />
         <div className="flex-1 flex flex-col overflow-auto">
-          {vista !== 'dashboard' && <CabeceraSemana fechaActual={fechaActual || new Date()} vista={vista} />}
-          {vista !== 'dashboard' && <CabeceraMes vista={vista} />}
+          {vista !== 'dashboard' && vista !== 'morosos' && <CabeceraSemana fechaActual={fechaActual || new Date()} vista={vista} />}
+          {vista !== 'dashboard' && vista !== 'morosos' && <CabeceraMes vista={vista} />}
           {isDataLoading ? (
             <div className="flex-1 flex items-center justify-center text-slate-500">Cargando datos...</div>
           ) : renderVista()}
@@ -567,7 +568,7 @@ export default function App() {
         </button>
       )}
       {/* Botón Flotante */}
-      {vista !== 'dashboard' && (
+      {vista !== 'dashboard' && vista !== 'morosos' && (
         <button
           onClick={() => { handleAddClaseClick(fechaActual); }}
           disabled={!!isLoading || !user || isDataLoading}
